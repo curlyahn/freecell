@@ -1,0 +1,14 @@
+{
+  "name": "freecell",
+  "version": "1.0.0",
+  "private": true,
+  "description": "하늘과 초원 배경의 밝고 귀여운 프리셀 카드 게임 (PWA)",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/build.mjs && npx --yes serve@14.2.4 dist"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

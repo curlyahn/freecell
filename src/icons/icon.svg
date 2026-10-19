@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a73c4"/>
+      <stop offset=".62" stop-color="#7cc4f2"/>
+      <stop offset=".63" stop-color="#7cc94a"/>
+      <stop offset="1" stop-color="#3f9a2a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <g transform="rotate(-12 256 280)">
+    <rect x="118" y="120" width="190" height="270" rx="26" fill="#fffdf4" stroke="#cfc9b4" stroke-width="4"/>
+    <text x="140" y="190" font-family="Arial Rounded MT Bold,Arial,sans-serif" font-weight="900" font-size="64" fill="#1f4b57">A</text>
+    <path d="M213 230c-30 40-62 58-62 86 0 22 26 34 46 20-2 18-8 30-16 38h64c-8-8-14-20-16-38 20 14 46 2 46-20 0-28-32-46-62-86z" fill="#1f4b57"/>
+  </g>
+  <g transform="rotate(10 256 280)">
+    <rect x="214" y="132" width="190" height="270" rx="26" fill="#fffdf4" stroke="#cfc9b4" stroke-width="4"/>
+    <text x="236" y="202" font-family="Arial Rounded MT Bold,Arial,sans-serif" font-weight="900" font-size="64" fill="#e3264f">A</text>
+    <path d="M309 380c-60-44-84-72-84-104 0-26 20-44 42-44 18 0 32 10 42 26 10-16 24-26 42-26 22 0 42 18 42 44 0 32-24 60-84 104z" fill="#e3264f"/>
+  </g>
+</svg>
