@@ -61,7 +61,7 @@ main{flex:1;min-height:0;display:flex;padding-left:max(10px,env(safe-area-inset-
 .colbase{position:absolute;border-radius:calc(var(--cw)*.12);background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4)}
 .card{position:absolute;left:0;top:0;width:var(--cw);height:var(--ch);background:var(--card);
   border-radius:calc(var(--cw)*.12);box-shadow:0 1px 0 #fff inset,0 -2px 0 rgba(0,0,0,.06) inset,0 1px 3px rgba(20,40,80,.35),0 0 0 .5px var(--edge);
-  color:var(--black);transition:transform .22s cubic-bezier(.3,.8,.3,1.05),background .2s,box-shadow .15s;will-change:transform;cursor:pointer;overflow:hidden}
+  color:var(--black);transition:background .25s,box-shadow .2s;will-change:transform;cursor:pointer;overflow:hidden}
 .card.r{color:var(--red)}
 .card.dim{background:var(--card-dim)}
 .card .tl{position:absolute;left:6%;right:6%;top:2%;display:flex;justify-content:space-between;align-items:center;font-family:var(--f-num);font-weight:800;line-height:1.1}
@@ -74,6 +74,7 @@ main{flex:1;min-height:0;display:flex;padding-left:max(10px,env(safe-area-inset-
 .card.hint{animation:glow .9s ease-in-out 2}
 @keyframes glow{50%{box-shadow:0 0 0 4px var(--gold),0 0 18px var(--gold)}}
 .card.drag{transition:none;box-shadow:0 0 0 3px var(--gold),0 12px 24px rgba(20,40,80,.45)}
+.card.fly{box-shadow:0 1px 0 #fff inset,0 12px 24px rgba(20,40,80,.38),0 0 0 .5px var(--edge)}
 .card.shake{animation:shake .3s}
 @keyframes shake{25%{translate:-4px 0}75%{translate:4px 0}}
 .card.pop{animation:pop .35s}
@@ -167,6 +168,7 @@ nav{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,
 </div>
 
 <div class="toast" id="toast" aria-hidden="true" role="status"></div>
+<canvas class="confetti" id="fx" hidden></canvas>
 <canvas class="confetti" id="confetti" hidden></canvas>
 <div class="overlay" id="ov" hidden><div class="sheet" id="sheet"></div></div>
 
@@ -225,7 +227,7 @@ function layout(){
     Object.assign(slots[i].style,{left:x+'px',top:'0px',width:cw+'px',height:ch+'px'});
     Object.assign(bases[i].style,{left:x+'px',top:top+'px',width:cw+'px',height:ch+'px'});
   }
-  render();
+  render(false);
 }
 const colX=i=>L.x0+i*(L.cw+L.g);
 function colOffset(n){
@@ -233,10 +235,42 @@ function colOffset(n){
   const avail=L.H-L.top-L.ch-4;
   return Math.max(8,Math.min(L.ch*.34,avail/(n-1)));
 }
-function place(c,x,y,z){const e=cardEl[c];e.style.transform='translate('+x+'px,'+y+'px)';e.style.zIndex=z}
+/* card motion: each card remembers where it sits; a change of place flies along an arc */
+const pos=new Array(52).fill(null);
+let animOn=false, flyIdx=0, movedCount=0, delayFor=null;
+const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+function stopFly(e){e.getAnimations().forEach(a=>{if(a.id==='fly')a.cancel()});e.classList.remove('fly')}
+function curXY(c){
+  const e=cardEl[c];
+  if(e.getAnimations().some(a=>a.id==='fly')){const m=new DOMMatrix(getComputedStyle(e).transform);return [m.e,m.f]}
+  return pos[c];
+}
+function place(c,x,y,z){
+  const e=cardEl[c], p=pos[c];
+  const moved=!p||Math.abs(p[0]-x)>.5||Math.abs(p[1]-y)>.5;
+  if(animOn&&p&&moved&&!reduced()){
+    const from=curXY(c)||p; stopFly(e);
+    const dist=Math.hypot(x-from[0],y-from[1]);
+    const dur=Math.max(320,Math.min(620,260+dist*.5));
+    const delay=delayFor?delayFor(c):(movedCount++)*45;
+    const lift=Math.min(80,16+dist*.14), zf=700+(flyIdx++);
+    e.style.transform='translate('+x+'px,'+y+'px)'; e.style.zIndex=z;
+    const a=e.animate([{transform:'translate('+from[0]+'px,'+from[1]+'px)',zIndex:zf},{transform:'translate('+x+'px,'+y+'px)',zIndex:zf}],
+      {duration:dur,delay,easing:'cubic-bezier(.25,.8,.25,1)',fill:'backwards'});
+    const b=e.animate([{translate:'0 0',scale:1},{translate:'0 '+(-lift)+'px',scale:1.1,offset:.42},{translate:'0 0',scale:1}],
+      {duration:dur,delay,easing:'ease-in-out'});
+    a.id=b.id='fly';
+    e.classList.add('fly'); a.onfinish=()=>e.classList.remove('fly');
+  } else {
+    if(!animOn&&moved) stopFly(e);
+    e.style.transform='translate('+x+'px,'+y+'px)'; e.style.zIndex=z;
+  }
+  pos[c]=[x,y];
+}
 function tailStart(i){const col=S.cols[i];let k=col.length-1;while(k>0&&stacks(col[k],col[k-1]))k--;return k}
-function render(){
-  if(!L.cw) return;
+function render(anim=true){
+  if(!L.cw||!S) return;
+  animOn=anim; flyIdx=0; movedCount=0;
   S.cols.forEach((col,i)=>{
     const off=colOffset(col.length), ts=tailStart(i);
     col.forEach((c,k)=>{place(c,colX(i),L.top+k*off,10+k);cardEl[c].classList.toggle('dim',k<ts)});
@@ -249,6 +283,7 @@ function render(){
   q('moves').textContent=S.moves; q('score').textContent=S.score;
   q('dealno').textContent='게임 #'+S.deal;
   q('undoBtn').disabled=!hist.length;
+  animOn=false;
 }
 
 /* rules */
@@ -301,20 +336,31 @@ function apply(m){
   else S.cols[m.dst.i].push(...moved);
 }
 let pops=[];function popLater(c){pops.push(c)}
-function flushPops(){const p=pops;pops=[];setTimeout(()=>p.forEach(c=>{const e=cardEl[c];e.classList.remove('pop');void e.offsetWidth;e.classList.add('pop')}),200)}
+function flushPops(){const p=pops;pops=[];setTimeout(()=>p.forEach(c=>{const e=cardEl[c];e.classList.remove('pop');void e.offsetWidth;e.classList.add('pop')}),reduced()?0:420)}
 function safeAuto(c){const r=rank(c);if(r<=1) return true;const o=red(c)?[0,3]:[1,2];return S.found[o[0]]>=r&&S.found[o[1]]>=r}
-function autoPlay(force){
-  let any=true,count=0;
-  while(any){any=false;
-    for(let i=0;i<4;i++){const c=S.cells[i];if(c!=null&&S.found[suit(c)]===rank(c)&&(force||safeAuto(c))){apply({src:{k:'cell',i},dst:{k:'found'}});any=true;count++}}
-    for(let i=0;i<8;i++){const col=S.cols[i];if(!col.length)continue;const c=col[col.length-1];if(S.found[suit(c)]===rank(c)&&(force||safeAuto(c))){apply({src:{k:'col',i,idx:col.length-1},dst:{k:'found'}});any=true;count++}}
-  }
-  return count;
+function findAuto(force){
+  for(let i=0;i<4;i++){const c=S.cells[i];if(c!=null&&S.found[suit(c)]===rank(c)&&(force||safeAuto(c))) return {src:{k:'cell',i},dst:{k:'found'}}}
+  for(let i=0;i<8;i++){const col=S.cols[i];if(!col.length)continue;const c=col[col.length-1];if(S.found[suit(c)]===rank(c)&&(force||safeAuto(c))) return {src:{k:'col',i,idx:col.length-1},dst:{k:'found'}}}
+  return null;
+}
+/* cards bound for the foundations fly one at a time */
+let autoToken=0;
+function runAuto(force,delay){
+  const t=++autoToken; let n=0;
+  const step=()=>{
+    if(t!==autoToken) return;
+    const m=findAuto(force);
+    if(!m){if(force&&n) toast(n+'장을 모았어요!');checkWin();persist();return}
+    apply(m); n++; render(); flushPops();
+    setTimeout(step,reduced()?0:(force?150:200));
+  };
+  setTimeout(step,reduced()?0:(delay||0));
 }
 function snapshot(){hist.push(clone(S));if(hist.length>400)hist.shift()}
 function doMove(m){
   snapshot(); apply(m); S.moves++; sel=null; startTimer();
-  autoPlay(); render(); flushPops(); checkWin(); persist();
+  render(); flushPops(); persist();
+  runAuto(false,360);
 }
 function smart(src){
   const cards=selCards(src), tries=[];
@@ -366,11 +412,9 @@ function showHint(){
 }
 function magic(){
   if(won||paused) return;
-  const before=clone(S);
-  const n=autoPlay(true);
-  if(!n){toast('지금은 올릴 수 있는 카드가 없어요');return}
-  hist.push(before);S.moves++;startTimer();render();flushPops();checkWin();persist();
-  toast(n+'장을 모았어요!');
+  if(!findAuto(true)){toast('지금은 올릴 수 있는 카드가 없어요');return}
+  snapshot();S.moves++;sel=null;startTimer();
+  runAuto(true,0);
 }
 
 /* hit testing */
@@ -397,7 +441,7 @@ board.addEventListener('pointermove',e=>{
   if(!ptr.drag&&Math.hypot(dx,dy)>7){
     ptr.drag=true;sel=null;render();
     ptr.cards=selCards(ptr.src);
-    ptr.start=ptr.cards.map(c=>{const m=/translate\(([-\d.e]+)px,\s*([-\d.e]+)px/.exec(cardEl[c].style.transform);return [+m[1],+m[2]]});
+    ptr.start=ptr.cards.map(c=>{const xy=curXY(c)||[0,0];stopFly(cardEl[c]);cardEl[c].style.transform='translate('+xy[0]+'px,'+xy[1]+'px)';return xy});
     ptr.cards.forEach((c,k)=>{cardEl[c].classList.add('drag');cardEl[c].style.zIndex=1000+k});
   }
   if(ptr.drag) ptr.cards.forEach((c,k)=>{cardEl[c].style.transform='translate('+(ptr.start[k][0]+dx)+'px,'+(ptr.start[k][1]+dy)+'px)'});
@@ -405,7 +449,7 @@ board.addEventListener('pointermove',e=>{
 function endPtr(e,cancel){
   if(!ptr) return; const p=ptr; ptr=null;
   if(p.drag){
-    p.cards.forEach(c=>cardEl[c].classList.remove('drag'));
+    p.cards.forEach((c,k)=>{cardEl[c].classList.remove('drag');pos[c]=[p.start[k][0]+(e.clientX-p.x0),p.start[k][1]+(e.clientY-p.y0)]});
     if(!cancel){
       const cx=p.start[0][0]+(e.clientX-p.x0)+L.cw/2, cy=p.start[0][1]+(e.clientY-p.y0)+L.ch*.3;
       const m=plan(p.src,targetAt(cx,cy));
@@ -460,13 +504,76 @@ function statsHtml(){
 /* win */
 function checkWin(){
   if(!S.found.every(n=>n===13)||won) return;
-  won=true;stopTimer();
-  const bonus=Math.max(0,Math.round(600-elapsed/1000));S.score+=bonus;render();
+  won=true;stopTimer();sel=null;
+  const bonus=Math.max(0,Math.round(600-elapsed/1000));S.score+=bonus;render();persist();
   const st=loadStats();const sec=Math.round(elapsed/1000);st.won++;st.streak++;st.best=st.best?Math.min(st.best,sec):sec;saveStats(st);
-  confetti();
-  setTimeout(()=>sheet('<div class="win-suits"><span class="k">♠</span><span class="r">♥</span><span class="r">♦</span><span class="k">♣</span></div><h2>축하해요!</h2>'+
+  setTimeout(()=>cascade(()=>{confetti();setTimeout(()=>winSheet(bonus),350)}),600);
+}
+function winSheet(bonus){
+  sheet('<div class="win-suits"><span class="k">♠</span><span class="r">♥</span><span class="r">♦</span><span class="k">♣</span></div><h2>축하해요!</h2>'+
     '<p>게임 #'+S.deal+'을 '+fmt(elapsed)+' 만에 '+S.moves+'번 이동으로 깼어요.<br>점수 '+S.score+'점 (시간 보너스 '+bonus+')</p>'+statsHtml()+
-    '<div class="col"><button class="btn green" id="sNew">새 게임</button></div>',()=>{q('sNew').onclick=()=>{closeSheet();newGame()}}),900);
+    '<div class="col"><button class="btn green" id="sNew">새 게임</button></div>',()=>{q('sNew').onclick=()=>{closeSheet();newGame()}});
+}
+/* win: the classic bouncing-card cascade, each card leaving a trail */
+let fx=null;
+function stopFx(){if(fx){fx.stop=true;fx=null}const cv=q('fx');cv.hidden=true;cv.style.opacity='';cv.style.transition='';cv.style.pointerEvents=''}
+function cardImage(c,w,h,dpr){
+  const cv=document.createElement('canvas');cv.width=Math.ceil(w*dpr);cv.height=Math.ceil(h*dpr);
+  const g=cv.getContext('2d');g.scale(dpr,dpr);
+  const r=w*.12;g.fillStyle='#fffdf4';g.strokeStyle='#cfc9b4';g.lineWidth=1;g.beginPath();
+  if(g.roundRect)g.roundRect(.5,.5,w-1,h-1,r);else g.rect(.5,.5,w-1,h-1);g.fill();g.stroke();
+  g.fillStyle=red(c)?'#e3264f':'#1f4b57';
+  const R=RANK[rank(c)],U=SUIT[suit(c)],num='"Nunito","Arial Rounded MT Bold",sans-serif';
+  g.textBaseline='top';g.textAlign='left';g.font='800 '+(w*.4)+'px '+num;g.fillText(R,w*.06,h*.04);
+  g.textAlign='right';g.font=(w*.26)+'px sans-serif';g.fillText(U,w*.94,h*.06);
+  g.textAlign='center';g.textBaseline='alphabetic';
+  if(rank(c)>=10){g.font='900 '+(w*.58)+'px '+num;g.fillText(R+U,w/2,h*.86)}
+  else{g.font=(w*.7)+'px sans-serif';g.fillText(U,w/2,h*.9)}
+  return cv;
+}
+function cascade(done){
+  if(reduced()){done();return}
+  const cv=q('fx'),dpr=Math.min(2,devicePixelRatio||1),W=innerWidth,H=innerHeight;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.transition='';cv.style.opacity='1';cv.style.pointerEvents='auto';cv.hidden=false;
+  const g=cv.getContext('2d');g.scale(dpr,dpr);
+  const br=board.getBoundingClientRect(),cw=L.cw,ch=L.ch,speed=Math.max(1,W/600);
+  const queue=[];for(let r=12;r>=0;r--)for(let f=0;f<4;f++){const s=S.fslot.indexOf(f);if(s>=0)queue.push(r*4+s)}
+  const parts=[],me={stop:false};fx=me;
+  let last=0,prev=performance.now();
+  const finish=()=>{
+    if(me.done)return;me.done=true;me.stop=true;if(fx===me)fx=null;
+    cv.style.pointerEvents='';cv.style.transition='opacity .7s';cv.style.opacity='0';
+    setTimeout(()=>{if(!fx){cv.hidden=true;cv.style.transition=''}},750);
+    done();
+  };
+  cv.onclick=finish;
+  toast('화면을 누르면 건너뛰어요');
+  (function frame(now){
+    if(me.stop)return;
+    const dt=Math.min(3,(now-prev)/16.67);prev=now;
+    if(queue.length&&now-last>150){
+      last=now;const c=queue.shift(),p=pos[c];cardEl[c].style.visibility='hidden';
+      parts.push({img:cardImage(c,cw,ch,dpr),x:br.left+p[0],y:br.top+p[1],
+        vx:(Math.random()<.5?-1:1)*(2.4+Math.random()*3.6)*speed,vy:-(1+Math.random()*6)});
+    }
+    for(let i=parts.length-1;i>=0;i--){
+      const p=parts[i];p.vy+=.5*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+      if(p.y+ch>H){p.y=H-ch;p.vy=-Math.abs(p.vy)*.78}
+      g.drawImage(p.img,p.x,p.y,cw,ch);
+      if(p.x<-cw-4||p.x>W+4)parts.splice(i,1);
+    }
+    if(!queue.length&&!parts.length){setTimeout(finish,900);return}
+    requestAnimationFrame(frame);
+  })(prev);
+}
+/* new game: cards are dealt one by one from a deck at the bottom */
+function dealAnim(){
+  if(reduced()||!L.cw){render(false);runAuto(false,0);return}
+  const sx=(L.W-L.cw)/2, sy=L.H-L.ch*.6, order={};
+  S.cols.forEach((col,i)=>col.forEach((c,k)=>{order[c]=k*8+i;pos[c]=[sx,sy]}));
+  delayFor=c=>order[c]!=null?120+order[c]*26:0;
+  render(true); delayFor=null;
+  runAuto(false,120+52*26+450);
 }
 function confetti(){
   const cv=q('confetti');if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -480,15 +587,17 @@ function confetti(){
 /* game flow */
 function abandon(){if(S&&S.counted&&!won){const st=loadStats();st.streak=0;saveStats(st)}}
 function start(n,state){
-  stopTimer();elapsed=0;won=false;paused=false;sel=null;hist=[];
+  autoToken++;stopTimer();stopFx();elapsed=0;won=false;paused=false;sel=null;hist=[];pops=[];
+  cardEl.forEach(e=>{e.style.visibility='';e.classList.remove('pop','hint','shake')});
   S=state||fresh(n);
   q('time').textContent=fmt(0);
-  autoPlay();render();pops=[];persist();
+  if(state){render(false);runAuto(false,300)}else dealAnim();
+  persist();
 }
 function newGame(n){abandon();start(n||1+Math.floor(Math.random()*32000))}
 function persist(){try{localStorage.setItem('fc-game',JSON.stringify({S,hist:hist.slice(-60),elapsed,won}))}catch(e){}}
 
-q('undoBtn').onclick=()=>{if(!hist.length||won||paused)return;S=hist.pop();sel=null;render();persist()};
+q('undoBtn').onclick=()=>{if(!hist.length||won||paused)return;autoToken++;S=hist.pop();sel=null;render();persist()};
 q('hintBtn').onclick=showHint;
 q('magicBtn').onclick=magic;
 q('pauseBtn').onclick=()=>{
@@ -520,13 +629,13 @@ document.addEventListener('keydown',e=>{
 
 /* boot: resumes an unfinished game on this device */
 function boot(data){
+  layout();
   let saved=data&&data.S?data:null;
   if(!saved){try{saved=JSON.parse(localStorage.getItem('fc-game'))}catch(e){}}
   if(saved&&saved.S&&!saved.won&&saved.S.fslot){
     start(saved.S.deal,saved.S);hist=saved.hist||[];elapsed=saved.elapsed||0;q('time').textContent=fmt(elapsed);
     if(elapsed>0)startTimer();
   } else {start(1+Math.floor(Math.random()*32000));setTimeout(()=>toast('카드를 끌거나 두 번 탭해서 옮겨요'),600)}
-  layout();
 }
 window.claude?.hot?.snapshot?.(()=>({S,hist,elapsed,won}));
 new ResizeObserver(layout).observe(board);
