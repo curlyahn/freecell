@@ -110,6 +110,32 @@ nav{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,
 .win-suits{font-size:2rem;margin-bottom:4px;letter-spacing:.15em}
 .win-suits .r{color:var(--red)} .win-suits .k{color:var(--black)}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:45}
+.intro{position:fixed;inset:0;z-index:60;display:grid;place-items:center;transition:opacity .45s;
+  background:linear-gradient(180deg,rgba(29,95,180,.9),rgba(74,163,236,.72) 55%,rgba(124,201,74,.8));backdrop-filter:blur(6px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.intro.out{opacity:0}
+.intro-in{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;width:min(320px,100%)}
+.fan{position:relative;width:220px;height:160px;margin-bottom:4px;animation:bob 3.2s ease-in-out 1.2s infinite}
+.mini{position:absolute;left:50%;bottom:0;width:80px;height:116px;margin-left:-40px;background:var(--card);border-radius:11px;
+  box-shadow:0 1px 0 #fff inset,0 6px 16px rgba(10,40,90,.35),0 0 0 .5px var(--edge);transform-origin:50% 165%;
+  font-family:var(--f-num);font-weight:900;color:var(--black);animation:fan .9s cubic-bezier(.2,.9,.3,1.25) both}
+.mini.r{color:var(--red)}
+.mini b{position:absolute;left:9px;top:4px;font-size:28px}
+.mini i{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-style:normal;font-size:54px;line-height:1}
+.mini:nth-child(1){--rot:-30deg;animation-delay:.15s}.mini:nth-child(2){--rot:-10deg;animation-delay:.25s}
+.mini:nth-child(3){--rot:10deg;animation-delay:.35s}.mini:nth-child(4){--rot:30deg;animation-delay:.45s}
+@keyframes fan{from{transform:translateY(70px) rotate(0);opacity:0}to{transform:rotate(var(--rot));opacity:1}}
+@keyframes bob{50%{transform:translateY(-6px)}}
+.logo{font-family:var(--f-ko);font-weight:400;font-size:3.4rem;margin:0;color:var(--white);letter-spacing:.04em;
+  text-shadow:0 3px 0 var(--band-deep),0 8px 18px rgba(10,40,90,.35)}
+.tag{margin:-8px 0 12px;font-family:var(--f-num);font-weight:800;letter-spacing:.32em;font-size:.8rem;text-transform:uppercase;opacity:.9}
+.intro .col{display:flex;flex-direction:column;gap:10px;width:100%}
+.btn.big{font-size:1.35rem;padding:14px 16px}
+.sound{background:rgba(255,255,255,.2);border:0;color:var(--white);font-family:var(--f-ko);font-size:.95rem;padding:8px 14px;border-radius:999px;
+  display:inline-flex;gap:6px;align-items:center;justify-content:center;cursor:pointer;margin-top:6px}
+.sound:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.btn .snd{display:inline-flex;gap:6px;align-items:center;justify-content:center}
+@media (prefers-reduced-motion:reduce){.mini,.fan{animation:none}.mini{transform:rotate(var(--rot))}}
 @media (prefers-reduced-motion:reduce){.card{transition:none}.card.shake,.card.hint,.card.pop,.seed{animation:none}}
 </style>
 <style>
@@ -170,6 +196,23 @@ nav{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,
 <div class="toast" id="toast" aria-hidden="true" role="status"></div>
 <canvas class="confetti" id="fx" hidden></canvas>
 <canvas class="confetti" id="confetti" hidden></canvas>
+<div class="intro" id="intro" hidden>
+  <div class="intro-in">
+    <div class="fan" aria-hidden="true">
+      <div class="mini"><b>A</b><i>♠</i></div>
+      <div class="mini r"><b>A</b><i>♥</i></div>
+      <div class="mini r"><b>A</b><i>♦</i></div>
+      <div class="mini"><b>A</b><i>♣</i></div>
+    </div>
+    <h1 class="logo">프리셀</h1>
+    <p class="tag">FreeCell</p>
+    <div class="col">
+      <button class="btn green big" id="introGo">게임 시작</button>
+      <button class="btn" id="introNew" hidden>새 게임</button>
+    </div>
+    <button class="sound" id="introSound"></button>
+  </div>
+</div>
 <div class="overlay" id="ov" hidden><div class="sheet" id="sheet"></div></div>
 
 <script>
@@ -180,6 +223,68 @@ const q=id=>document.getElementById(id);
 const board=q('board');
 let S, hist=[], sel=null, L={}, timerId=null, startTs=0, elapsed=0, won=false, paused=false;
 const cardEl=[];
+
+/* Sound effects, synthesized with Web Audio (no audio files) */
+const Sfx=(()=>{
+  let ctx=null,out=null,nbuf=null,lastBounce=0,on=true;
+  try{on=localStorage.getItem('fc-sound')!=='off'}catch(e){}
+  function ac(){
+    if(!ctx){
+      const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;
+      try{ctx=new AC()}catch(e){return null}
+      out=ctx.createDynamicsCompressor();const g=ctx.createGain();g.gain.value=.85;out.connect(g);g.connect(ctx.destination);
+      nbuf=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate);const d=nbuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    }
+    if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+    return ctx;
+  }
+  function tone(t,f,dur,o={}){
+    const os=ctx.createOscillator(),g=ctx.createGain();os.type=o.type||'sine';
+    os.frequency.setValueAtTime(f,t);if(o.to)os.frequency.exponentialRampToValueAtTime(o.to,t+dur);
+    const v=o.vol??.2;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+(o.att||.006));g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    os.connect(g);g.connect(out);os.start(t);os.stop(t+dur+.05);
+  }
+  function bell(t,f,dur,vol){tone(t,f,dur,{type:'triangle',vol});tone(t,f*2,dur*.6,{vol:vol*.35});tone(t,f*3.01,dur*.3,{vol:vol*.12})}
+  function hiss(t,dur,o={}){
+    const sr=ctx.createBufferSource(),fl=ctx.createBiquadFilter(),g=ctx.createGain();sr.buffer=nbuf;
+    fl.type=o.type||'bandpass';fl.Q.value=o.q??1.2;fl.frequency.setValueAtTime(o.f||2400,t);if(o.to)fl.frequency.exponentialRampToValueAtTime(o.to,t+dur);
+    const v=o.vol??.3;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+(o.att||.004));g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    sr.connect(fl);fl.connect(g);g.connect(out);sr.start(t,Math.random()*.4);sr.stop(t+dur+.02);
+  }
+  const N=n=>440*Math.pow(2,(n-69)/12);
+  const FX={
+    pick(t){hiss(t,.05,{f:5200,type:'highpass',vol:.12})},
+    land(t,v){v=v||1;hiss(t,.08,{f:2800,to:900,vol:.3*v});tone(t,150,.07,{vol:.12*v,to:85})},
+    found(t,r){const sc=[0,2,4,7,9];bell(t,N(72+Math.floor(r/5)*12+sc[r%5]),.5,.17)},
+    bad(t){tone(t,190,.13,{type:'triangle',to:130,vol:.17});tone(t+.08,150,.15,{type:'triangle',to:100,vol:.13})},
+    undo(t){hiss(t,.16,{f:900,to:3400,vol:.2})},
+    hint(t){bell(t,N(88),.3,.1);bell(t+.1,N(91),.45,.1)},
+    magic(t){[0,4,7,11,12,16].forEach((x,i)=>bell(t+i*.05,N(84+x),.4,.07));hiss(t,.45,{f:6500,type:'highpass',vol:.05})},
+    shuffle(t){for(let i=0;i<10;i++)hiss(t+i*.033,.05,{f:2600+Math.random()*1800,vol:.13})},
+    click(t){tone(t,880,.05,{vol:.08})},
+    intro(t){
+      [72,76,79,84].forEach((n,i)=>bell(t+i*.11,N(n),.5,.15));
+      [76,79,84,88].forEach(n=>bell(t+.5,N(n),1.3,.07));tone(t+.5,N(48),1.1,{type:'triangle',vol:.13});
+    },
+    win(t){
+      [[67,0],[72,.12],[76,.24],[79,.36],[76,.54],[79,.64],[84,.8]].forEach(([n,d])=>bell(t+d,N(n),.5,.16));
+      [72,76,79,84].forEach(n=>bell(t+.8,N(n),1.7,.07));tone(t+.8,N(48),1.5,{type:'triangle',vol:.14});
+    },
+    tada(t){bell(t,N(84),.8,.11);bell(t+.09,N(91),1,.11);hiss(t,.5,{f:7000,type:'highpass',vol:.05})},
+    bounce(t,v){tone(t,100+v*6,.08,{type:'triangle',vol:Math.min(.13,.02+v*.011),to:65})}
+  };
+  return {
+    get on(){return on},
+    set on(v){on=v;try{localStorage.setItem('fc-sound',v?'on':'off')}catch(e){}},
+    unlock(){ac()},
+    play(name,delay,arg){
+      if(!on||!ac())return;
+      if(name==='bounce'){const now=performance.now();if(now-lastBounce<50)return;lastBounce=now}
+      try{FX[name](ctx.currentTime+(delay||0)/1000+.005,arg)}catch(e){}
+    }
+  };
+})();
+addEventListener('pointerdown',()=>Sfx.unlock(),{capture:true});
 
 /* Microsoft FreeCell deal: game numbers 1–32000 match the classic Windows layouts */
 function msDeal(n){
@@ -260,7 +365,8 @@ function place(c,x,y,z){
     const b=e.animate([{translate:'0 0',scale:1},{translate:'0 '+(-lift)+'px',scale:1.1,offset:.42},{translate:'0 0',scale:1}],
       {duration:dur,delay,easing:'ease-in-out'});
     a.id=b.id='fly';
-    e.classList.add('fly'); a.onfinish=()=>e.classList.remove('fly');
+    if(!delayFor){e.classList.add('fly'); a.onfinish=()=>e.classList.remove('fly')}
+    Sfx.play('land',delay+dur*.9,delayFor?.5:1);
   } else {
     if(!animOn&&moved) stopFly(e);
     e.style.transform='translate('+x+'px,'+y+'px)'; e.style.zIndex=z;
@@ -330,7 +436,7 @@ function apply(m){
   if(m.dst.k==='found'){
     const s=suit(moved[0]);
     if(S.fslot[s]<0){const used=new Set(S.fslot);let f=m.dst.slot!=null&&!used.has(m.dst.slot)?m.dst.slot:[0,1,2,3].find(x=>!used.has(x));S.fslot[s]=f}
-    S.found[s]++; S.score+=10; popLater(moved[0]);
+    S.found[s]++; S.score+=10; popLater(moved[0]); Sfx.play('found',reduced()?0:470,rank(moved[0]));
   }
   else if(m.dst.k==='cell') S.cells[m.dst.i]=moved[0];
   else S.cols[m.dst.i].push(...moved);
@@ -371,7 +477,7 @@ function smart(src){
   for(const d of tries){const m=plan(src,d);if(m&&m.n===cards.length) return m}
   return null;
 }
-function shake(cards){cards.forEach(c=>{const e=cardEl[c];e.classList.remove('shake');void e.offsetWidth;e.classList.add('shake')})}
+function shake(cards){Sfx.play('bad');cards.forEach(c=>{const e=cardEl[c];e.classList.remove('shake');void e.offsetWidth;e.classList.add('shake')})}
 
 /* hint: foundation first, then moves that build on another column, then cell/empty-column moves */
 function findHint(){
@@ -399,7 +505,8 @@ function findHint(){
 function showHint(){
   if(won||paused) return;
   const h=findHint();
-  if(!h){toast('더 이상 옮길 수 있는 카드가 없어요. 취소해 볼까요?');return}
+  if(!h){Sfx.play('bad');toast('더 이상 옮길 수 있는 카드가 없어요. 취소해 볼까요?');return}
+  Sfx.play('hint');
   sel=null;render();
   selCards(h.src).forEach(c=>{const e=cardEl[c];e.classList.remove('hint');void e.offsetWidth;e.classList.add('hint')});
   let el;
@@ -412,7 +519,8 @@ function showHint(){
 }
 function magic(){
   if(won||paused) return;
-  if(!findAuto(true)){toast('지금은 올릴 수 있는 카드가 없어요');return}
+  if(!findAuto(true)){Sfx.play('bad');toast('지금은 올릴 수 있는 카드가 없어요');return}
+  Sfx.play('magic');
   snapshot();S.moves++;sel=null;startTimer();
   runAuto(true,0);
 }
@@ -439,7 +547,7 @@ board.addEventListener('pointermove',e=>{
   if(!ptr||!ptr.src) return;
   const dx=e.clientX-ptr.x0, dy=e.clientY-ptr.y0;
   if(!ptr.drag&&Math.hypot(dx,dy)>7){
-    ptr.drag=true;sel=null;render();
+    ptr.drag=true;sel=null;render();Sfx.play('pick');
     ptr.cards=selCards(ptr.src);
     ptr.start=ptr.cards.map(c=>{const xy=curXY(c)||[0,0];stopFly(cardEl[c]);cardEl[c].style.transform='translate('+xy[0]+'px,'+xy[1]+'px)';return xy});
     ptr.cards.forEach((c,k)=>{cardEl[c].classList.add('drag');cardEl[c].style.zIndex=1000+k});
@@ -472,10 +580,10 @@ function tap(p){
     if(same){const cs=selCards(sel),m=smart(sel);sel=null;if(m)doMove(m);else{shake(cs);render()}return}
     const m=plan(sel,targetAt(p.x,p.y));
     if(m){doMove(m);return}
-    if(p.src){sel=p.src;render();return}
+    if(p.src){sel=p.src;Sfx.play('pick');render();return}
     shake(selCards(sel));sel=null;render();return;
   }
-  if(p.src){sel=p.src;render()}
+  if(p.src){sel=p.src;Sfx.play('pick');render()}
   else if(p.c!=null) shake([p.c]);
 }
 
@@ -507,9 +615,11 @@ function checkWin(){
   won=true;stopTimer();sel=null;
   const bonus=Math.max(0,Math.round(600-elapsed/1000));S.score+=bonus;render();persist();
   const st=loadStats();const sec=Math.round(elapsed/1000);st.won++;st.streak++;st.best=st.best?Math.min(st.best,sec):sec;saveStats(st);
+  Sfx.play('win',250);
   setTimeout(()=>cascade(()=>{confetti();setTimeout(()=>winSheet(bonus),350)}),600);
 }
 function winSheet(bonus){
+  Sfx.play('tada');
   sheet('<div class="win-suits"><span class="k">♠</span><span class="r">♥</span><span class="r">♦</span><span class="k">♣</span></div><h2>축하해요!</h2>'+
     '<p>게임 #'+S.deal+'을 '+fmt(elapsed)+' 만에 '+S.moves+'번 이동으로 깼어요.<br>점수 '+S.score+'점 (시간 보너스 '+bonus+')</p>'+statsHtml()+
     '<div class="col"><button class="btn green" id="sNew">새 게임</button></div>',()=>{q('sNew').onclick=()=>{closeSheet();newGame()}});
@@ -558,7 +668,7 @@ function cascade(done){
     }
     for(let i=parts.length-1;i>=0;i--){
       const p=parts[i];p.vy+=.5*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
-      if(p.y+ch>H){p.y=H-ch;p.vy=-Math.abs(p.vy)*.78}
+      if(p.y+ch>H){const v=Math.abs(p.vy);p.y=H-ch;p.vy=-v*.78;if(v>3)Sfx.play('bounce',0,v)}
       g.drawImage(p.img,p.x,p.y,cw,ch);
       if(p.x<-cw-4||p.x>W+4)parts.splice(i,1);
     }
@@ -569,6 +679,7 @@ function cascade(done){
 /* new game: cards are dealt one by one from a deck at the bottom */
 function dealAnim(){
   if(reduced()||!L.cw){render(false);runAuto(false,0);return}
+  Sfx.play('shuffle');
   const sx=(L.W-L.cw)/2, sy=L.H-L.ch*.6, order={};
   S.cols.forEach((col,i)=>col.forEach((c,k)=>{order[c]=k*8+i;pos[c]=[sx,sy]}));
   delayFor=c=>order[c]!=null?120+order[c]*26:0;
@@ -597,12 +708,12 @@ function start(n,state){
 function newGame(n){abandon();start(n||1+Math.floor(Math.random()*32000))}
 function persist(){try{localStorage.setItem('fc-game',JSON.stringify({S,hist:hist.slice(-60),elapsed,won}))}catch(e){}}
 
-q('undoBtn').onclick=()=>{if(!hist.length||won||paused)return;autoToken++;S=hist.pop();sel=null;render();persist()};
+q('undoBtn').onclick=()=>{if(!hist.length||won||paused)return;autoToken++;Sfx.play('undo');S=hist.pop();sel=null;render();persist()};
 q('hintBtn').onclick=showHint;
 q('magicBtn').onclick=magic;
 q('pauseBtn').onclick=()=>{
   if(won) return;
-  const running=!!timerId; stopTimer(); paused=true; board.style.visibility='hidden';
+  const running=!!timerId; stopTimer(); paused=true; Sfx.play('click'); board.style.visibility='hidden';
   sheet('<h2>일시 정지</h2><p>게임 #'+S.deal+' · '+fmt(elapsed)+' · '+S.moves+'번 이동</p><div class="col"><button class="btn green" id="sGo">계속하기</button></div>',
     ()=>{q('sGo').onclick=closeSheet},
     ()=>{paused=false;board.style.visibility='';if(running)startTimer();persist()});
@@ -611,7 +722,9 @@ q('statsBtn').onclick=()=>sheet('<h2>내 기록</h2><p>이 기기에서 플레�
   '<div class="col"><button class="btn ghost" id="sClose">닫기</button></div>',()=>{q('sClose').onclick=closeSheet});
 q('menuBtn').onclick=()=>sheet('<h2>메뉴</h2><p>게임 #'+S.deal+'</p><div class="col">'+
   '<button class="btn green" id="mNew">새 게임</button><button class="btn" id="mRe">처음부터 다시</button><button class="btn" id="mNum">번호로 게임 고르기</button>'+
-  '<button class="btn ghost" id="mClose">닫기</button></div>',()=>{
+  '<button class="btn" id="mSnd"></button><button class="btn ghost" id="mClose">닫기</button></div>',()=>{
+    q('mSnd').innerHTML='<span class="snd">'+soundLabel()+'</span>';
+    q('mSnd').onclick=()=>{Sfx.on=!Sfx.on;q('mSnd').innerHTML='<span class="snd">'+soundLabel()+'</span>';Sfx.play('click')};
     q('mNew').onclick=()=>{closeSheet();newGame()};
     q('mRe').onclick=()=>{closeSheet();const c=S.counted;start(S.deal);S.counted=c};
     q('mClose').onclick=closeSheet;
@@ -627,15 +740,36 @@ document.addEventListener('keydown',e=>{
   if(e.key==='h'&&ov.hidden)showHint();
 });
 
+/* title screen: the tap on its button also lets the browser play sound */
+function speakerSvg(on){return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>'+(on?'<path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11"/>':'<path d="M16 9.5l5 5M21 9.5l-5 5"/>')+'</svg>'}
+function soundLabel(){return speakerSvg(Sfx.on)+(Sfx.on?'효과음 켜짐':'효과음 꺼짐')}
+function showIntro(resume){
+  const el=q('intro');el.hidden=false;q('introSound').innerHTML=soundLabel();
+  q('introGo').textContent=resume?'이어하기':'게임 시작';q('introNew').hidden=!resume;
+  const close=fn=>{
+    Sfx.unlock();Sfx.play('intro');
+    el.classList.add('out');setTimeout(()=>{el.hidden=true;el.classList.remove('out')},460);
+    setTimeout(fn,reduced()?0:520);
+  };
+  q('introGo').onclick=()=>close(()=>{if(resume){if(elapsed>0)startTimer()}else start(S.deal)});
+  q('introNew').onclick=()=>close(()=>newGame());
+  q('introSound').onclick=()=>{Sfx.on=!Sfx.on;Sfx.unlock();q('introSound').innerHTML=soundLabel();Sfx.play('click')};
+}
+
 /* boot: resumes an unfinished game on this device */
 function boot(data){
   layout();
-  let saved=data&&data.S?data:null;
-  if(!saved){try{saved=JSON.parse(localStorage.getItem('fc-game'))}catch(e){}}
+  if(data&&data.S){start(data.S.deal,data.S);hist=data.hist||[];elapsed=data.elapsed||0;q('time').textContent=fmt(elapsed);if(elapsed>0)startTimer();return}
+  let saved=null;
+  try{saved=JSON.parse(localStorage.getItem('fc-game'))}catch(e){}
   if(saved&&saved.S&&!saved.won&&saved.S.fslot){
     start(saved.S.deal,saved.S);hist=saved.hist||[];elapsed=saved.elapsed||0;q('time').textContent=fmt(elapsed);
-    if(elapsed>0)startTimer();
-  } else {start(1+Math.floor(Math.random()*32000));setTimeout(()=>toast('카드를 끌거나 두 번 탭해서 옮겨요'),600)}
+    showIntro(true);
+  } else {
+    S=fresh(1+Math.floor(Math.random()*32000));render(false);
+    cardEl.forEach(e=>e.style.visibility='hidden');
+    showIntro(false);
+  }
 }
 window.claude?.hot?.snapshot?.(()=>({S,hist,elapsed,won}));
 new ResizeObserver(layout).observe(board);
