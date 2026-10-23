@@ -226,58 +226,83 @@ const board=q('board');
 let over=false, S, hist=[], sel=null, L={}, timerId=null, startTs=0, elapsed=0, won=false, paused=false;
 const cardEl=[];
 
-/* Sound effects, synthesized with Web Audio (no audio files) */
+/* Sound effects, synthesized with Web Audio (no audio files):
+   soft mallet and celesta tones in a small room reverb, paper-and-felt card sounds */
 const Sfx=(()=>{
-  let ctx=null,out=null,nbuf=null,lastBounce=0,on=true;
+  let ctx=null,dry=null,wet=null,nbuf=null,lastBounce=0,on=true;
   try{on=localStorage.getItem('fc-sound')!=='off'}catch(e){}
   function ac(){
     if(!ctx){
       const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;
       try{ctx=new AC()}catch(e){return null}
-      out=ctx.createDynamicsCompressor();const g=ctx.createGain();g.gain.value=.85;out.connect(g);g.connect(ctx.destination);
+      const comp=ctx.createDynamicsCompressor();comp.threshold.value=-18;comp.ratio.value=3;
+      const tone=ctx.createBiquadFilter();tone.type='lowpass';tone.frequency.value=9000;
+      const master=ctx.createGain();master.gain.value=2.2;
+      comp.connect(tone);tone.connect(master);master.connect(ctx.destination);
+      dry=ctx.createGain();dry.connect(comp);
+      // small room reverb from a generated impulse
+      const len=Math.floor(ctx.sampleRate*1.6),ir=ctx.createBuffer(2,len,ctx.sampleRate);
+      for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3.2)}
+      const conv=ctx.createConvolver();conv.buffer=ir;
+      const pre=ctx.createBiquadFilter();pre.type='highpass';pre.frequency.value=350;
+      wet=ctx.createGain();wet.gain.value=.32;wet.connect(pre);pre.connect(conv);conv.connect(comp);
       nbuf=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate);const d=nbuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
     }
     if(ctx.state==='suspended')ctx.resume().catch(()=>{});
     return ctx;
   }
-  function tone(t,f,dur,o={}){
-    const os=ctx.createOscillator(),g=ctx.createGain();os.type=o.type||'sine';
+  function route(node,send){node.connect(dry);if(send)node.connect(wet)}
+  function sine(t,f,dur,vol,o={}){
+    const os=ctx.createOscillator(),g=ctx.createGain();os.type='sine';
     os.frequency.setValueAtTime(f,t);if(o.to)os.frequency.exponentialRampToValueAtTime(o.to,t+dur);
-    const v=o.vol??.2;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+(o.att||.006));g.gain.exponentialRampToValueAtTime(.0001,t+dur);
-    os.connect(g);g.connect(out);os.start(t);os.stop(t+dur+.05);
+    if(o.detune)os.detune.value=o.detune;
+    const att=o.att||.004;
+    g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(vol,t+att);
+    if(o.hold){g.gain.setValueAtTime(vol,t+att+o.hold)}
+    g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    os.connect(g);route(g,o.send??true);os.start(t);os.stop(t+dur+.05);
   }
-  function bell(t,f,dur,vol){tone(t,f,dur,{type:'triangle',vol});tone(t,f*2,dur*.6,{vol:vol*.35});tone(t,f*3.01,dur*.3,{vol:vol*.12})}
-  function hiss(t,dur,o={}){
+  /* mallet: warm fundamental plus the quick 4x overtone of a marimba bar */
+  function mallet(t,f,vol,dur){dur=dur||.7;sine(t,f,dur,vol);sine(t,f*4,dur*.12,vol*.22);sine(t,f*10.0,dur*.04,vol*.06)}
+  /* celesta: bell-like, gently bright, long soft tail */
+  function celesta(t,f,vol,dur){dur=dur||1.4;sine(t,f,dur,vol);sine(t,f*2,dur*.5,vol*.28);sine(t,f*3,dur*.2,vol*.08);sine(t,f*1.003,dur,vol*.4,{detune:4})}
+  function pad(t,fs,dur,vol){fs.forEach(f=>{sine(t,f,dur,vol,{att:.35,detune:-5});sine(t,f,dur,vol*.7,{att:.4,detune:6})})}
+  function noise(t,dur,o){
     const sr=ctx.createBufferSource(),fl=ctx.createBiquadFilter(),g=ctx.createGain();sr.buffer=nbuf;
-    fl.type=o.type||'bandpass';fl.Q.value=o.q??1.2;fl.frequency.setValueAtTime(o.f||2400,t);if(o.to)fl.frequency.exponentialRampToValueAtTime(o.to,t+dur);
-    const v=o.vol??.3;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+(o.att||.004));g.gain.exponentialRampToValueAtTime(.0001,t+dur);
-    sr.connect(fl);fl.connect(g);g.connect(out);sr.start(t,Math.random()*.4);sr.stop(t+dur+.02);
+    fl.type=o.type||'bandpass';fl.Q.value=o.q??.8;fl.frequency.setValueAtTime(o.f,t);if(o.to)fl.frequency.exponentialRampToValueAtTime(o.to,t+dur);
+    const att=o.att||.003;g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(o.vol,t+att);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    sr.connect(fl);fl.connect(g);route(g,o.send);sr.start(t,Math.random()*.5);sr.stop(t+dur+.02);
   }
   const N=n=>440*Math.pow(2,(n-69)/12);
+  const PENTA=[0,2,4,7,9];
   const FX={
-    pick(t){hiss(t,.05,{f:5200,type:'highpass',vol:.12})},
-    land(t,v){v=v||1;hiss(t,.08,{f:2800,to:900,vol:.3*v});tone(t,150,.07,{vol:.12*v,to:85})},
-    found(t,r){const sc=[0,2,4,7,9];bell(t,N(72+Math.floor(r/5)*12+sc[r%5]),.5,.17)},
-    bad(t){tone(t,190,.13,{type:'triangle',to:130,vol:.17});tone(t+.08,150,.15,{type:'triangle',to:100,vol:.13})},
-    undo(t){hiss(t,.16,{f:900,to:3400,vol:.2})},
-    hint(t){bell(t,N(88),.3,.1);bell(t+.1,N(91),.45,.1)},
-    magic(t){[0,4,7,11,12,16].forEach((x,i)=>bell(t+i*.05,N(84+x),.4,.07));hiss(t,.45,{f:6500,type:'highpass',vol:.05})},
-    shuffle(t){for(let i=0;i<10;i++)hiss(t+i*.033,.05,{f:2600+Math.random()*1800,vol:.13})},
-    click(t){tone(t,880,.05,{vol:.08})},
-    intro(t){
-      [72,76,79,84].forEach((n,i)=>bell(t+i*.11,N(n),.5,.15));
-      [76,79,84,88].forEach(n=>bell(t+.5,N(n),1.3,.07));tone(t+.5,N(48),1.1,{type:'triangle',vol:.13});
-    },
+    /* card lifted off the table: a short paper brush */
+    pick(t){noise(t,.07,{f:4200,to:2600,q:.6,vol:.15,att:.012})},
+    /* card set down on felt: soft paper slap with a little body */
+    land(t,v){v=v||1;noise(t,.05,{f:1700,q:.5,vol:.34*v,type:'lowpass'});noise(t,.02,{f:5000,type:'highpass',vol:.06*v});sine(t,140,.07,.1*v,{to:90,send:false})},
+    /* foundation: celesta notes climbing a pentatonic scale from ace to king */
+    found(t,r){const n=76+Math.floor(r/5)*12+PENTA[r%5];celesta(t,N(n),.075,1.3)},
+    /* not allowed: two muted low mallet taps */
+    bad(t){mallet(t,N(57),.07,.25);mallet(t+.09,N(53),.06,.3)},
+    undo(t){noise(t,.16,{f:1400,to:3600,q:.6,vol:.13,att:.09})},
+    hint(t){celesta(t,N(88),.05,1);celesta(t+.12,N(95),.045,1.2)},
+    magic(t){[0,4,7,11,14,19].forEach((x,i)=>celesta(t+i*.06,N(79+x),.045,1.2));noise(t,.6,{f:8000,type:'highpass',vol:.015,att:.2,send:true})},
+    /* riffle shuffle, then the deck settles */
+    shuffle(t){for(let i=0;i<14;i++){const d=i*.022;noise(t+d,.03,{f:2600+i*60,q:1,vol:.07+(i%3)*.012})}noise(t+.34,.06,{f:1200,type:'lowpass',vol:.22})},
+    click(t){sine(t,1600,.05,.05,{send:false});sine(t,800,.07,.04,{send:false})},
+    /* title: a gentle Cmaj9 celesta arpeggio over a warm pad */
+    intro(t){[60,64,67,71,74,79].forEach((n,i)=>celesta(t+i*.085,N(n+12),.06,1.8));pad(t+.05,[N(48),N(55),N(64),N(71)],2.4,.022)},
+    /* win: rising Fmaj9 → Cmaj9 arpeggio, settling on a soft chord */
     win(t){
-      [[67,0],[72,.12],[76,.24],[79,.36],[76,.54],[79,.64],[84,.8]].forEach(([n,d])=>bell(t+d,N(n),.5,.16));
-      [72,76,79,84].forEach(n=>bell(t+.8,N(n),1.7,.07));tone(t+.8,N(48),1.5,{type:'triangle',vol:.14});
+      [65,69,72,76,79].forEach((n,i)=>celesta(t+i*.08,N(n+12),.055,1.4));
+      [72,76,79,83,86].forEach((n,i)=>celesta(t+.5+i*.08,N(n+12),.06,2));
+      pad(t+.5,[N(48),N(55),N(64),N(71),N(74)],3,.022);
     },
-    over(t){
-      [[67,0],[66,.3],[65,.6]].forEach(([n,d])=>tone(t+d,N(n),.32,{type:'triangle',vol:.16}));
-      tone(t+.9,N(64),.95,{type:'triangle',vol:.17,to:N(57)});tone(t+.9,N(40),.95,{type:'sine',vol:.1,to:N(33)});
-    },
-    tada(t){bell(t,N(84),.8,.11);bell(t+.09,N(91),1,.11);hiss(t,.5,{f:7000,type:'highpass',vol:.05})},
-    bounce(t,v){tone(t,100+v*6,.08,{type:'triangle',vol:Math.min(.13,.02+v*.011),to:65})}
+    tada(t){[84,88,91,95].forEach((n,i)=>celesta(t+i*.04,N(n),.04,1.6))},
+    /* cascade bounces: soft wooden taps on random pentatonic notes */
+    bounce(t,v){mallet(t,N(55+PENTA[Math.random()*5|0]+(Math.random()<.5?0:12)),Math.min(.12,.025+v*.008),.35)},
+    /* game over: a calm descending D minor line over a dark pad, no jokes */
+    over(t){[[74,0],[72,.32],[69,.64],[65,.96]].forEach(([n,d])=>mallet(t+d,N(n),.07,1.1));pad(t+.9,[N(38),N(50),N(57),N(64)],2.4,.022)}
   };
   return {
     get on(){return on},
@@ -285,7 +310,7 @@ const Sfx=(()=>{
     unlock(){ac()},
     play(name,delay,arg){
       if(!on||!ac())return;
-      if(name==='bounce'){const now=performance.now();if(now-lastBounce<50)return;lastBounce=now}
+      if(name==='bounce'){const now=performance.now();if(now-lastBounce<70)return;lastBounce=now}
       try{FX[name](ctx.currentTime+(delay||0)/1000+.005,arg)}catch(e){}
     }
   };
