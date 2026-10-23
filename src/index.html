@@ -74,6 +74,8 @@ main{flex:1;min-height:0;display:flex;padding-left:max(10px,env(safe-area-inset-
 .card.hint{animation:glow .9s ease-in-out 2}
 @keyframes glow{50%{box-shadow:0 0 0 4px var(--gold),0 0 18px var(--gold)}}
 .card.drag{transition:none;box-shadow:0 0 0 3px var(--gold),0 12px 24px rgba(20,40,80,.45)}
+#board.over .card{filter:grayscale(.65) brightness(.9);transition:filter .7s,background .25s,box-shadow .2s}
+.over-cards{font-size:2rem;margin-bottom:2px;letter-spacing:.1em;color:#9aa6b6}
 .card.fly{box-shadow:0 1px 0 #fff inset,0 12px 24px rgba(20,40,80,.38),0 0 0 .5px var(--edge)}
 .card.shake{animation:shake .3s}
 @keyframes shake{25%{translate:-4px 0}75%{translate:4px 0}}
@@ -221,7 +223,7 @@ const SUIT=['♣','♦','♥','♠'], RANK=['A','2','3','4','5','6','7','8','9',
 const rank=c=>c>>2, suit=c=>c&3, red=c=>{const s=c&3;return s===1||s===2};
 const q=id=>document.getElementById(id);
 const board=q('board');
-let S, hist=[], sel=null, L={}, timerId=null, startTs=0, elapsed=0, won=false, paused=false;
+let over=false, S, hist=[], sel=null, L={}, timerId=null, startTs=0, elapsed=0, won=false, paused=false;
 const cardEl=[];
 
 /* Sound effects, synthesized with Web Audio (no audio files) */
@@ -269,6 +271,10 @@ const Sfx=(()=>{
     win(t){
       [[67,0],[72,.12],[76,.24],[79,.36],[76,.54],[79,.64],[84,.8]].forEach(([n,d])=>bell(t+d,N(n),.5,.16));
       [72,76,79,84].forEach(n=>bell(t+.8,N(n),1.7,.07));tone(t+.8,N(48),1.5,{type:'triangle',vol:.14});
+    },
+    over(t){
+      [[67,0],[66,.3],[65,.6]].forEach(([n,d])=>tone(t+d,N(n),.32,{type:'triangle',vol:.16}));
+      tone(t+.9,N(64),.95,{type:'triangle',vol:.17,to:N(57)});tone(t+.9,N(40),.95,{type:'sine',vol:.1,to:N(33)});
     },
     tada(t){bell(t,N(84),.8,.11);bell(t+.09,N(91),1,.11);hiss(t,.5,{f:7000,type:'highpass',vol:.05})},
     bounce(t,v){tone(t,100+v*6,.08,{type:'triangle',vol:Math.min(.13,.02+v*.011),to:65})}
@@ -456,7 +462,7 @@ function runAuto(force,delay){
   const step=()=>{
     if(t!==autoToken) return;
     const m=findAuto(force);
-    if(!m){if(force&&n) toast(n+'장을 모았어요!');checkWin();persist();return}
+    if(!m){if(force&&n) toast(n+'장을 모았어요!');checkWin();checkStuck();persist();return}
     apply(m); n++; render(); flushPops();
     setTimeout(step,reduced()?0:(force?150:200));
   };
@@ -504,6 +510,7 @@ function findHint(){
 }
 function showHint(){
   if(won||paused) return;
+  if(over){showOver();return}
   const h=findHint();
   if(!h){Sfx.play('bad');toast('더 이상 옮길 수 있는 카드가 없어요. 취소해 볼까요?');return}
   Sfx.play('hint');
@@ -519,6 +526,7 @@ function showHint(){
 }
 function magic(){
   if(won||paused) return;
+  if(over){showOver();return}
   if(!findAuto(true)){Sfx.play('bad');toast('지금은 올릴 수 있는 카드가 없어요');return}
   Sfx.play('magic');
   snapshot();S.moves++;sel=null;startTimer();
@@ -536,6 +544,7 @@ function targetAt(x,y){
 let ptr=null, lastTap={c:-1,t:0};
 board.addEventListener('pointerdown',e=>{
   if(won||paused) return;
+  if(over){showOver();return}
   const rect=board.getBoundingClientRect();
   const node=e.target.closest('.card'); const c=node?+node.dataset.c:null;
   let src=null;
@@ -618,6 +627,36 @@ function checkWin(){
   Sfx.play('win',250);
   setTimeout(()=>cascade(()=>{confetti();setTimeout(()=>winSheet(bonus),350)}),600);
 }
+/* game over: free cells full, no empty column, and no card can go anywhere */
+function hasMove(){
+  if(S.cells.includes(null)||S.cols.some(c=>!c.length)) return true;
+  const tops=S.cols.map(c=>c[c.length-1]);
+  for(const c of [...S.cells,...tops]){
+    if(S.found[suit(c)]===rank(c)) return true;
+    for(const t of tops) if(t!==c&&stacks(c,t)) return true;
+  }
+  return false;
+}
+function checkStuck(){
+  if(won||over||!S||hasMove()) return;
+  over=true;sel=null;stopTimer();render();persist();
+  board.classList.add('over');
+  const st=loadStats();st.streak=0;saveStats(st);
+  Sfx.play('over',150);
+  setTimeout(()=>{if(over)showOver()},900);
+}
+function showOver(){
+  sheet('<div class="over-cards">♠♥♦♣</div><h2>게임 오버</h2>'+
+    '<p>더 이상 옮길 수 있는 카드가 없어요.<br>게임 #'+S.deal+' · '+fmt(elapsed)+' · '+S.moves+'번 이동</p>'+
+    '<div class="col"><button class="btn green" id="oNew">새 게임</button>'+
+    '<button class="btn" id="oRe">이 게임 처음부터</button>'+
+    (hist.length?'<button class="btn ghost" id="oUndo">한 수 되돌리기</button>':'')+'</div>',
+    ()=>{
+      q('oNew').onclick=()=>{closeSheet();newGame()};
+      q('oRe').onclick=()=>{closeSheet();const c=S.counted;start(S.deal);S.counted=c};
+      if(q('oUndo')) q('oUndo').onclick=()=>{closeSheet();q('undoBtn').click()};
+    });
+}
 function winSheet(bonus){
   Sfx.play('tada');
   sheet('<div class="win-suits"><span class="k">♠</span><span class="r">♥</span><span class="r">♦</span><span class="k">♣</span></div><h2>축하해요!</h2>'+
@@ -698,7 +737,7 @@ function confetti(){
 /* game flow */
 function abandon(){if(S&&S.counted&&!won){const st=loadStats();st.streak=0;saveStats(st)}}
 function start(n,state){
-  autoToken++;stopTimer();stopFx();elapsed=0;won=false;paused=false;sel=null;hist=[];pops=[];
+  autoToken++;stopTimer();stopFx();elapsed=0;won=false;over=false;board.classList.remove('over');paused=false;sel=null;hist=[];pops=[];
   cardEl.forEach(e=>{e.style.visibility='';e.classList.remove('pop','hint','shake')});
   S=state||fresh(n);
   q('time').textContent=fmt(0);
@@ -708,7 +747,7 @@ function start(n,state){
 function newGame(n){abandon();start(n||1+Math.floor(Math.random()*32000))}
 function persist(){try{localStorage.setItem('fc-game',JSON.stringify({S,hist:hist.slice(-60),elapsed,won}))}catch(e){}}
 
-q('undoBtn').onclick=()=>{if(!hist.length||won||paused)return;autoToken++;Sfx.play('undo');S=hist.pop();sel=null;render();persist()};
+q('undoBtn').onclick=()=>{if(!hist.length||won||paused)return;if(over){over=false;board.classList.remove('over')}autoToken++;Sfx.play('undo');S=hist.pop();sel=null;render();persist()};
 q('hintBtn').onclick=showHint;
 q('magicBtn').onclick=magic;
 q('pauseBtn').onclick=()=>{
