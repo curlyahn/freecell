@@ -12,7 +12,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>프리셀 카드 테이블</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Nunito:wght@700;800;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Jua&family=Nunito:wght@700;800;900&display=swap">
 <style>
 /* Layout: one-screen game — blue score band, sky with clouds behind the board, meadow at the bottom under a pill toolbar. Deliberately single bright theme. */
 :root{
@@ -22,6 +22,7 @@
   --red:#e3264f; --black:#1f4b57; --gold:#ffc93c; --white:#ffffff; --ink:#24324a;
   --tool:#3d7a24; --tool-deep:#2c5c18;
   --f-num:"Nunito","Arial Rounded MT Bold","Helvetica Neue",sans-serif;
+  --f-card:"Fredoka","Nunito","Arial Rounded MT Bold",sans-serif;
   --f-ko:"Jua","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   color-scheme:light;
 }
@@ -55,32 +56,40 @@ header{background:linear-gradient(180deg,var(--band),var(--band-deep));box-shado
 .dealno{font-family:var(--f-num);font-weight:700;font-size:.72rem;opacity:.75;text-align:center;margin-top:2px;letter-spacing:.06em}
 main{flex:1;min-height:0;display:flex;padding-left:max(5px,env(safe-area-inset-left,0px));padding-right:max(5px,env(safe-area-inset-right,0px));padding-block:10px 4px}
 #board{position:relative;flex:1;min-width:0;max-width:880px;margin:0 auto;touch-action:none}
-.slot{position:absolute;border-radius:calc(var(--cw)*.12);background:var(--slot);box-shadow:inset 0 0 0 1.5px var(--slot-line),inset 0 2px 6px rgba(0,0,0,.15);
-  display:grid;place-items:center;color:rgba(255,255,255,.28);font-family:var(--f-num);font-weight:900;font-size:calc(var(--cw)*.62)}
+.slot{position:absolute;border-radius:calc(var(--cw)*.22);background:var(--slot);box-shadow:inset 0 0 0 2px var(--slot-line),inset 0 3px 8px rgba(0,0,0,.14);
+  display:grid;place-items:center;color:rgba(255,255,255,.3);font-family:var(--f-card);font-weight:700;font-size:calc(var(--cw)*.6)}
 .slot.hint-dst,.colbase.hint-dst{box-shadow:inset 0 0 0 3px var(--gold);animation:glow .9s ease-in-out 2}
-.colbase{position:absolute;border-radius:calc(var(--cw)*.12);background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4)}
-.card{position:absolute;left:0;top:0;width:var(--cw);height:var(--ch);background:var(--card);
-  border-radius:calc(var(--cw)*.12);box-shadow:0 1px 0 #fff inset,0 -2px 0 rgba(0,0,0,.06) inset,0 1px 3px rgba(20,40,80,.35),0 0 0 .5px var(--edge);
-  color:var(--black);transition:background .25s,box-shadow .2s;will-change:transform;cursor:pointer;overflow:hidden}
+.colbase{position:absolute;border-radius:calc(var(--cw)*.22);background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 2px rgba(255,255,255,.42)}
+/* chubby toy-tile cards: big radius, a soft thick bottom edge, rounded numerals and puffy suits */
+.card{position:absolute;left:0;top:0;width:var(--cw);height:var(--ch);background:linear-gradient(180deg,#fffef9 0%,var(--card) 60%,#fbf5e4 100%);
+  border-radius:calc(var(--cw)*.22);
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9),inset 0 calc(var(--cw)*-.04) 0 rgba(214,200,168,.35),0 0 0 1px #e9dfc6,0 calc(var(--cw)*.035) 0 #ddd1b3,0 calc(var(--cw)*.08) calc(var(--cw)*.14) rgba(30,60,110,.2);
+  color:var(--black);will-change:transform;cursor:pointer;overflow:hidden;
+  transition:background .25s,box-shadow .2s,translate .22s cubic-bezier(.3,1.4,.5,1),scale .22s cubic-bezier(.3,1.4,.5,1),rotate .22s ease}
 .card.r{color:var(--red)}
-.card.dim{background:var(--card-dim)}
-.card .tl{position:absolute;left:5%;right:5%;top:1%;display:flex;justify-content:space-between;align-items:center;font-family:var(--f-num);font-weight:800;line-height:1.1}
-.card .tl em{font-style:normal;font-size:calc(var(--cw)*.47);letter-spacing:-.07em}
-.card .tl i{font-style:normal;font-size:calc(var(--cw)*.32)}
-.card .mid{position:absolute;left:0;right:0;bottom:6%;text-align:center;font-size:calc(var(--cw)*.78);line-height:1}
-.card .mid.face{font-family:var(--f-num);font-weight:900;font-size:calc(var(--cw)*.62);bottom:10%}
-.card .mid.face small{font-size:.55em;margin-left:1px}
-.card.sel{box-shadow:0 0 0 3px var(--gold),0 6px 14px rgba(20,40,80,.4)}
+.card.dim{background:linear-gradient(180deg,#eeebe1,var(--card-dim))}
+.card .tl{position:absolute;left:9%;right:8%;top:4%;display:flex;justify-content:space-between;align-items:center;line-height:1}
+.card .tl em{font-style:normal;font-family:var(--f-card);font-weight:600;font-size:calc(var(--cw)*.46);letter-spacing:-.05em}
+.card .tl em.ten{font-size:calc(var(--cw)*.38);letter-spacing:-.09em}
+.card .tl svg{width:calc(var(--cw)*.28);height:calc(var(--cw)*.28);flex:none}
+.card svg{fill:currentColor;display:block}
+.card .mid{position:absolute;left:0;right:0;bottom:9%;display:flex;justify-content:center}
+.card .mid svg{width:calc(var(--cw)*.68);height:calc(var(--cw)*.68)}
+.card .mid.face{bottom:8%}
+.card .badge{width:calc(var(--cw)*.74);height:calc(var(--cw)*.7);border-radius:calc(var(--cw)*.2);display:grid;place-items:center;
+  font-family:var(--f-card);font-weight:700;font-size:calc(var(--cw)*.5);line-height:1;background:var(--tint);box-shadow:inset 0 calc(var(--cw)*-.03) 0 rgba(0,0,0,.05)}
+.card .badge.J{--tint:#dcf3e6}.card .badge.Q{--tint:#ffe2ea}.card .badge.K{--tint:#fff0bf}
+.card.sel{translate:0 calc(var(--cw)*-.1);box-shadow:0 0 0 3px var(--gold),0 calc(var(--cw)*.035) 0 #e0b23c,0 8px 16px rgba(20,40,80,.3)}
 .card.hint{animation:glow .9s ease-in-out 2}
 @keyframes glow{50%{box-shadow:0 0 0 4px var(--gold),0 0 18px var(--gold)}}
-.card.drag{transition:none;box-shadow:0 0 0 3px var(--gold),0 12px 24px rgba(20,40,80,.45)}
+.card.drag{scale:1.07;rotate:3deg;box-shadow:0 0 0 3px var(--gold),0 calc(var(--cw)*.035) 0 #e0b23c,0 14px 26px rgba(20,40,80,.35)}
 #board.over .card{filter:grayscale(.65) brightness(.9);transition:filter .7s,background .25s,box-shadow .2s}
 .over-cards{font-size:2rem;margin-bottom:2px;letter-spacing:.1em;color:#9aa6b6}
-.card.fly{box-shadow:0 1px 0 #fff inset,0 12px 24px rgba(20,40,80,.38),0 0 0 .5px var(--edge)}
-.card.shake{animation:shake .3s}
-@keyframes shake{25%{translate:-4px 0}75%{translate:4px 0}}
-.card.pop{animation:pop .35s}
-@keyframes pop{40%{scale:1.12}}
+.card.fly{box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9),0 0 0 1px #e9dfc6,0 calc(var(--cw)*.035) 0 #ddd1b3,0 14px 26px rgba(30,60,110,.28)}
+.card.shake{animation:shake .36s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{20%{translate:-4px 0;rotate:-3deg}50%{translate:4px 0;rotate:3deg}80%{translate:-2px 0;rotate:-1deg}}
+.card.pop{animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{35%{scale:1.14}65%{scale:.97}}
 nav{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:6px 14px}
 .toolbar{max-width:440px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);border-radius:22px;padding:6px 4px 4px;
   background:linear-gradient(180deg,#5a9a33,var(--tool) 45%,var(--tool-deep));box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 16px rgba(20,50,10,.4)}
@@ -111,19 +120,19 @@ nav{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,
 .statgrid b{display:block;font-family:var(--f-num);font-weight:900;font-size:1.5rem;color:var(--band);font-variant-numeric:tabular-nums}
 .win-suits{font-size:2rem;margin-bottom:4px;letter-spacing:.15em}
 .win-suits .r{color:var(--red)} .win-suits .k{color:var(--black)}
-.confetti{position:fixed;inset:0;pointer-events:none;z-index:45}
+.confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:45}
 .intro{position:fixed;inset:0;z-index:60;display:grid;place-items:center;transition:opacity .45s;
   background:linear-gradient(180deg,rgba(29,95,180,.9),rgba(74,163,236,.72) 55%,rgba(124,201,74,.8));backdrop-filter:blur(6px);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .intro.out{opacity:0}
 .intro-in{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;width:min(320px,100%)}
 .fan{position:relative;width:220px;height:160px;margin-bottom:4px;animation:bob 3.2s ease-in-out 1.2s infinite}
-.mini{position:absolute;left:50%;bottom:0;width:80px;height:116px;margin-left:-40px;background:var(--card);border-radius:11px;
+.mini{position:absolute;left:50%;bottom:0;width:80px;height:118px;margin-left:-40px;background:linear-gradient(180deg,#fffef9,var(--card));border-radius:18px;
   box-shadow:0 1px 0 #fff inset,0 6px 16px rgba(10,40,90,.35),0 0 0 .5px var(--edge);transform-origin:50% 165%;
   font-family:var(--f-num);font-weight:900;color:var(--black);animation:fan .9s cubic-bezier(.2,.9,.3,1.25) both}
 .mini.r{color:var(--red)}
-.mini b{position:absolute;left:9px;top:4px;font-size:28px}
-.mini i{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-style:normal;font-size:54px;line-height:1}
+.mini b{position:absolute;left:11px;top:7px;font-size:30px;font-family:var(--f-card);font-weight:600}
+.mini svg{position:absolute;left:12px;top:42px;width:26px;height:26px;fill:currentColor}
 .mini:nth-child(1){--rot:-30deg;animation-delay:.15s}.mini:nth-child(2){--rot:-10deg;animation-delay:.25s}
 .mini:nth-child(3){--rot:10deg;animation-delay:.35s}.mini:nth-child(4){--rot:30deg;animation-delay:.45s}
 @keyframes fan{from{transform:translateY(70px) rotate(0);opacity:0}to{transform:rotate(var(--rot));opacity:1}}
@@ -198,13 +207,19 @@ nav{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,
 <div class="toast" id="toast" aria-hidden="true" role="status"></div>
 <canvas class="confetti" id="fx" hidden></canvas>
 <canvas class="confetti" id="confetti" hidden></canvas>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <path id="suit-0" d="M12 3.2a4.1 4.1 0 0 1 3.7 5.9 4.1 4.1 0 1 1-2.5 7.3l.9 3.6c.1.5-.2 1-.8 1h-2.6c-.6 0-.9-.5-.8-1l.9-3.6a4.1 4.1 0 1 1-2.5-7.3A4.1 4.1 0 0 1 12 3.2z"/>
+  <path id="suit-1" d="M12 2.8c.6 0 1 .4 1.4.9l5.9 7.2c.5.6.5 1.6 0 2.2l-5.9 7.2c-.8 1-2 1-2.8 0l-5.9-7.2c-.5-.6-.5-1.6 0-2.2l5.9-7.2c.4-.5.8-.9 1.4-.9z"/>
+  <path id="suit-2" d="M12 20.5c-.6 0-8.5-5-8.5-10.6A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.5 2.9c0 5.6-7.9 10.6-8.5 10.6z"/>
+  <path id="suit-3" d="M12 3c.6 0 8.5 5.2 8.5 10.4a4.3 4.3 0 0 1-7.2 3.2l.9 3.4c.1.5-.2 1-.8 1h-2.8c-.6 0-.9-.5-.8-1l.9-3.4a4.3 4.3 0 0 1-7.2-3.2C3.5 8.2 11.4 3 12 3z"/>
+</defs></svg>
 <div class="intro" id="intro" hidden>
   <div class="intro-in">
     <div class="fan" aria-hidden="true">
-      <div class="mini"><b>A</b><i>♠</i></div>
-      <div class="mini r"><b>A</b><i>♥</i></div>
-      <div class="mini r"><b>A</b><i>♦</i></div>
-      <div class="mini"><b>A</b><i>♣</i></div>
+      <div class="mini"><b>A</b><svg viewBox="0 0 24 24"><use href="#suit-3"/></svg></div>
+      <div class="mini r"><b>A</b><svg viewBox="0 0 24 24"><use href="#suit-2"/></svg></div>
+      <div class="mini r"><b>A</b><svg viewBox="0 0 24 24"><use href="#suit-1"/></svg></div>
+      <div class="mini"><b>A</b><svg viewBox="0 0 24 24"><use href="#suit-0"/></svg></div>
     </div>
     <h1 class="logo">프리셀</h1>
     <p class="tag">FreeCell</p>
@@ -337,8 +352,9 @@ function saveStats(st){try{localStorage.setItem('fc-stats',JSON.stringify(st))}c
 for(let c=0;c<52;c++){
   const el=document.createElement('div'); el.className='card'+(red(c)?' r':''); el.dataset.c=c;
   const r=rank(c), s=SUIT[suit(c)];
-  el.innerHTML='<div class="tl"><em>'+RANK[r]+'</em><i>'+s+'</i></div>'+
-    (r>=10?'<div class="mid face">'+RANK[r]+'<small>'+s+'</small></div>':'<div class="mid">'+s+'</div>');
+  const sv='<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#suit-'+suit(c)+'"/></svg>';
+  el.innerHTML='<div class="tl"><em'+(r===9?' class="ten"':'')+'>'+RANK[r]+'</em>'+sv+'</div>'+
+    (r>=10?'<div class="mid face"><span class="badge '+RANK[r]+'">'+RANK[r]+'</span></div>':'<div class="mid">'+sv+'</div>');
   el.setAttribute('aria-label',RANK[r]+' '+['클로버','다이아몬드','하트','스페이드'][suit(c)]);
   cardEl.push(el);
 }
@@ -375,6 +391,8 @@ function colOffset(n){
 const pos=new Array(52).fill(null);
 let animOn=false, flyIdx=0, movedCount=0, delayFor=null;
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* soft start, long gentle landing (blend of ease-in-out and ease-out cubic) */
+const easeFly=u=>.35*(u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2)+.65*(1-Math.pow(1-u,3));
 function stopFly(e){e.getAnimations().forEach(a=>{if(a.id==='fly')a.cancel()});e.classList.remove('fly')}
 function curXY(c){
   const e=cardEl[c];
@@ -387,14 +405,18 @@ function place(c,x,y,z){
   if(animOn&&p&&moved&&!reduced()){
     const from=curXY(c)||p; stopFly(e);
     const dist=Math.hypot(x-from[0],y-from[1]);
-    const dur=Math.max(320,Math.min(620,260+dist*.5));
-    const delay=delayFor?delayFor(c):(movedCount++)*45;
-    const lift=Math.min(80,16+dist*.14), zf=700+(flyIdx++);
+    const dur=Math.max(420,Math.min(760,330+dist*.6));
+    const delay=delayFor?delayFor(c):(movedCount++)*55;
+    const lift=Math.min(70,14+dist*.12), zf=700+(flyIdx++);
+    const tilt=Math.max(-10,Math.min(10,(x-from[0])/16));
     e.style.transform='translate('+x+'px,'+y+'px)'; e.style.zIndex=z;
-    const a=e.animate([{transform:'translate('+from[0]+'px,'+from[1]+'px)',zIndex:zf},{transform:'translate('+x+'px,'+y+'px)',zIndex:zf}],
-      {duration:dur,delay,easing:'cubic-bezier(.25,.8,.25,1)',fill:'backwards'});
-    const b=e.animate([{translate:'0 0',scale:1},{translate:'0 '+(-lift)+'px',scale:1.1,offset:.42},{translate:'0 0',scale:1}],
-      {duration:dur,delay,easing:'ease-in-out'});
+    const frames=[];
+    for(let k=0;k<=24;k++){
+      const u=k/24, q=easeFly(u), arc=Math.sin(Math.PI*q);
+      frames.push({transform:'translate('+(from[0]+(x-from[0])*q)+'px,'+(from[1]+(y-from[1])*q-lift*arc)+'px) rotate('+(tilt*arc)+'deg) scale('+(1+.08*arc)+')',zIndex:zf});
+    }
+    const a=e.animate(frames,{duration:dur,delay,easing:'linear',fill:'backwards'});
+    const b=e.animate([{scale:'1'},{scale:'1.05 .93',offset:.35},{scale:'.98 1.02',offset:.7},{scale:'1'}],{duration:300,delay:delay+dur-20,easing:'ease-out'});
     a.id=b.id='fly';
     if(!delayFor){e.classList.add('fly'); a.onfinish=()=>e.classList.remove('fly')}
     Sfx.play('land',delay+dur*.9,delayFor?.5:1);
@@ -467,13 +489,13 @@ function apply(m){
   if(m.dst.k==='found'){
     const s=suit(moved[0]);
     if(S.fslot[s]<0){const used=new Set(S.fslot);let f=m.dst.slot!=null&&!used.has(m.dst.slot)?m.dst.slot:[0,1,2,3].find(x=>!used.has(x));S.fslot[s]=f}
-    S.found[s]++; S.score+=10; popLater(moved[0]); Sfx.play('found',reduced()?0:470,rank(moved[0]));
+    S.found[s]++; S.score+=10; popLater(moved[0]); Sfx.play('found',reduced()?0:560,rank(moved[0]));
   }
   else if(m.dst.k==='cell') S.cells[m.dst.i]=moved[0];
   else S.cols[m.dst.i].push(...moved);
 }
 let pops=[];function popLater(c){pops.push(c)}
-function flushPops(){const p=pops;pops=[];setTimeout(()=>p.forEach(c=>{const e=cardEl[c];e.classList.remove('pop');void e.offsetWidth;e.classList.add('pop')}),reduced()?0:420)}
+function flushPops(){const p=pops;pops=[];setTimeout(()=>p.forEach(c=>{const e=cardEl[c];e.classList.remove('pop');void e.offsetWidth;e.classList.add('pop')}),reduced()?0:520)}
 function safeAuto(c){const r=rank(c);if(r<=1) return true;const o=red(c)?[0,3]:[1,2];return S.found[o[0]]>=r&&S.found[o[1]]>=r}
 function findAuto(force){
   for(let i=0;i<4;i++){const c=S.cells[i];if(c!=null&&S.found[suit(c)]===rank(c)&&(force||safeAuto(c))) return {src:{k:'cell',i},dst:{k:'found'}}}
@@ -489,7 +511,7 @@ function runAuto(force,delay){
     const m=findAuto(force);
     if(!m){if(force&&n) toast(n+'장을 모았어요!');checkWin();checkStuck();persist();return}
     apply(m); n++; render(); flushPops();
-    setTimeout(step,reduced()?0:(force?150:200));
+    setTimeout(step,reduced()?0:(force?190:240));
   };
   setTimeout(step,reduced()?0:(delay||0));
 }
@@ -497,7 +519,7 @@ function snapshot(){hist.push(clone(S));if(hist.length>400)hist.shift()}
 function doMove(m){
   snapshot(); apply(m); S.moves++; sel=null; startTimer();
   render(); flushPops(); persist();
-  runAuto(false,360);
+  runAuto(false,460);
 }
 function smart(src){
   const cards=selCards(src), tries=[];
@@ -662,8 +684,54 @@ function hasMove(){
   }
   return false;
 }
+/* Can any sequence of moves ever put a card on a foundation? Explores every reachable
+   arrangement (single-card moves; bigger moves are made of these). If none of them
+   allows a foundation move, the player can only shuffle cards around forever. */
+function canProgress(limit){
+  limit=limit||6000;
+  const F=S.found, ch=c=>String.fromCharCode(48+c);
+  const key=st=>st.cells.map(ch).sort().join('')+'|'+st.cols.map(c=>c.map(ch).join('')).sort().join(',');
+  const start={cells:S.cells.filter(c=>c!=null),cols:S.cols.map(c=>c.slice())};
+  const seen=new Set([key(start)]),queue=[start];
+  for(let qi=0;qi<queue.length;qi++){
+    const st=queue[qi],tops=st.cols.map(c=>c.length?c[c.length-1]:null);
+    for(const c of st.cells) if(F[suit(c)]===rank(c)) return true;
+    for(const t of tops) if(t!=null&&F[suit(t)]===rank(t)) return true;
+    if(seen.size>limit) return true; /* too open to rule out: assume progress is possible */
+    const empty=tops.indexOf(null);
+    const push=ns=>{const k=key(ns);if(!seen.has(k)){seen.add(k);queue.push(ns)}};
+    st.cells.forEach((c,ci)=>{
+      const rest=st.cells.filter((_,k)=>k!==ci);
+      for(let j=0;j<8;j++){
+        const t=tops[j];
+        if(t==null?j!==empty:!stacks(c,t)) continue;
+        const cols=st.cols.slice();cols[j]=cols[j].concat([c]);push({cells:rest,cols});
+      }
+    });
+    for(let i=0;i<8;i++){
+      const col=st.cols[i];if(!col.length) continue;
+      const c=col[col.length-1],base=st.cols.slice();base[i]=col.slice(0,-1);
+      if(st.cells.length<4) push({cells:st.cells.concat([c]),cols:base});
+      for(let j=0;j<8;j++){
+        if(j===i) continue;
+        const t=tops[j];
+        if(t==null){if(j!==empty||col.length===1) continue}
+        else if(!stacks(c,t)) continue;
+        const cols=base.slice();cols[j]=cols[j].concat([c]);push({cells:st.cells,cols});
+      }
+    }
+  }
+  return false;
+}
+let overWhy='';
 function checkStuck(){
-  if(won||over||!S||hasMove()) return;
+  if(won||over||!S) return;
+  if(hasMove()){
+    /* endless shuffling only happens when space is tight; skip the deep check otherwise */
+    const space=S.cells.filter(c=>c==null).length+S.cols.filter(c=>!c.length).length;
+    if(space>2||canProgress(3000)) return;
+    overWhy='loop';
+  } else overWhy='none';
   over=true;sel=null;stopTimer();render();persist();
   board.classList.add('over');
   const st=loadStats();st.streak=0;saveStats(st);
@@ -672,7 +740,7 @@ function checkStuck(){
 }
 function showOver(){
   sheet('<div class="over-cards">♠♥♦♣</div><h2>게임 오버</h2>'+
-    '<p>더 이상 옮길 수 있는 카드가 없어요.<br>게임 #'+S.deal+' · '+fmt(elapsed)+' · '+S.moves+'번 이동</p>'+
+    '<p>'+(overWhy==='loop'?'카드를 옮겨도 같은 자리만 맴돌 뿐,<br>파운데이션에 올릴 수 있는 카드가 없어요.':'더 이상 옮길 수 있는 카드가 없어요.')+'<br>게임 #'+S.deal+' · '+fmt(elapsed)+' · '+S.moves+'번 이동</p>'+
     '<div class="col"><button class="btn green" id="oNew">새 게임</button>'+
     '<button class="btn" id="oRe">이 게임 처음부터</button>'+
     (hist.length?'<button class="btn ghost" id="oUndo">한 수 되돌리기</button>':'')+'</div>',
@@ -691,18 +759,24 @@ function winSheet(bonus){
 /* win: the classic bouncing-card cascade, each card leaving a trail */
 let fx=null;
 function stopFx(){if(fx){fx.stop=true;fx=null}const cv=q('fx');cv.hidden=true;cv.style.opacity='';cv.style.transition='';cv.style.pointerEvents=''}
+const SUIT_D=[0,1,2,3].map(i=>document.getElementById('suit-'+i).getAttribute('d'));
 function cardImage(c,w,h,dpr){
-  const cv=document.createElement('canvas');cv.width=Math.ceil(w*dpr);cv.height=Math.ceil(h*dpr);
+  const cv=document.createElement('canvas');cv.width=Math.ceil(w*dpr);cv.height=Math.ceil((h+w*.05)*dpr);
   const g=cv.getContext('2d');g.scale(dpr,dpr);
-  const r=w*.12;g.fillStyle='#fffdf4';g.strokeStyle='#cfc9b4';g.lineWidth=1;g.beginPath();
-  if(g.roundRect)g.roundRect(.5,.5,w-1,h-1,r);else g.rect(.5,.5,w-1,h-1);g.fill();g.stroke();
-  g.fillStyle=red(c)?'#e3264f':'#1f4b57';
-  const R=RANK[rank(c)],U=SUIT[suit(c)],num='"Nunito","Arial Rounded MT Bold",sans-serif';
-  g.textBaseline='top';g.textAlign='left';g.font='800 '+(w*.47)+'px '+num;g.fillText(R,w*.05,h*.02);
-  g.textAlign='right';g.font=(w*.32)+'px sans-serif';g.fillText(U,w*.95,h*.04);
-  g.textAlign='center';g.textBaseline='alphabetic';
-  if(rank(c)>=10){g.font='900 '+(w*.58)+'px '+num;g.fillText(R+U,w/2,h*.86)}
-  else{g.font=(w*.7)+'px sans-serif';g.fillText(U,w/2,h*.9)}
+  const r=w*.22,rr=(x,y,ww,hh,rad)=>{g.beginPath();if(g.roundRect)g.roundRect(x,y,ww,hh,rad);else g.rect(x,y,ww,hh)};
+  g.fillStyle='#ddd1b3';rr(0,w*.035,w,h,r);g.fill();
+  const grd=g.createLinearGradient(0,0,0,h);grd.addColorStop(0,'#fffef9');grd.addColorStop(1,'#fbf5e4');
+  g.fillStyle=grd;rr(0,0,w,h,r);g.fill();g.strokeStyle='#e9dfc6';g.lineWidth=1;g.stroke();
+  const col=red(c)?'#e3264f':'#1f4b57',R=RANK[rank(c)],P=new Path2D(SUIT_D[suit(c)]);
+  const suitAt=(x,y,size)=>{g.save();g.translate(x,y);g.scale(size/24,size/24);g.fill(P);g.restore()};
+  g.fillStyle=col;g.textBaseline='top';g.textAlign='left';
+  g.font='600 '+(w*(R==='10'?.38:.46))+'px "Fredoka","Nunito",sans-serif';g.fillText(R,w*.09,h*.04);
+  suitAt(w*.64,h*.035,w*.28);
+  if(rank(c)>=10){
+    g.fillStyle={J:'#dcf3e6',Q:'#ffe2ea',K:'#fff0bf'}[R];rr(w*.13,h-w*.7-h*.08,w*.74,w*.7,w*.2);g.fill();
+    g.fillStyle=col;g.textAlign='center';g.textBaseline='middle';g.font='700 '+(w*.5)+'px "Fredoka","Nunito",sans-serif';
+    g.fillText(R,w/2,h-h*.08-w*.35);
+  } else suitAt(w*.16,h-h*.09-w*.68,w*.68);
   return cv;
 }
 function cascade(done){
@@ -733,7 +807,7 @@ function cascade(done){
     for(let i=parts.length-1;i>=0;i--){
       const p=parts[i];p.vy+=.5*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
       if(p.y+ch>H){const v=Math.abs(p.vy);p.y=H-ch;p.vy=-v*.78;if(v>3)Sfx.play('bounce',0,v)}
-      g.drawImage(p.img,p.x,p.y,cw,ch);
+      g.drawImage(p.img,p.x,p.y,cw,ch+cw*.05);
       if(p.x<-cw-4||p.x>W+4)parts.splice(i,1);
     }
     if(!queue.length&&!parts.length){setTimeout(finish,900);return}
