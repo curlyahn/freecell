@@ -53,8 +53,8 @@ header{background:linear-gradient(180deg,var(--band),var(--band-deep));box-shado
 .stats-band span{display:block;font-size:.95rem;opacity:.92}
 .stats-band b{display:block;font-family:var(--f-num);font-weight:800;font-size:1.35rem;font-variant-numeric:tabular-nums;line-height:1.15}
 .dealno{font-family:var(--f-num);font-weight:700;font-size:.72rem;opacity:.75;text-align:center;margin-top:2px;letter-spacing:.06em}
-main{flex:1;min-height:0;display:flex;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));padding-block:12px 6px}
-#board{position:relative;flex:1;min-width:0;max-width:760px;margin:0 auto;touch-action:none}
+main{flex:1;min-height:0;display:flex;padding-left:max(5px,env(safe-area-inset-left,0px));padding-right:max(5px,env(safe-area-inset-right,0px));padding-block:10px 4px}
+#board{position:relative;flex:1;min-width:0;max-width:880px;margin:0 auto;touch-action:none}
 .slot{position:absolute;border-radius:calc(var(--cw)*.12);background:var(--slot);box-shadow:inset 0 0 0 1.5px var(--slot-line),inset 0 2px 6px rgba(0,0,0,.15);
   display:grid;place-items:center;color:rgba(255,255,255,.28);font-family:var(--f-num);font-weight:900;font-size:calc(var(--cw)*.62)}
 .slot.hint-dst,.colbase.hint-dst{box-shadow:inset 0 0 0 3px var(--gold);animation:glow .9s ease-in-out 2}
@@ -64,11 +64,11 @@ main{flex:1;min-height:0;display:flex;padding-left:max(10px,env(safe-area-inset-
   color:var(--black);transition:background .25s,box-shadow .2s;will-change:transform;cursor:pointer;overflow:hidden}
 .card.r{color:var(--red)}
 .card.dim{background:var(--card-dim)}
-.card .tl{position:absolute;left:6%;right:6%;top:2%;display:flex;justify-content:space-between;align-items:center;font-family:var(--f-num);font-weight:800;line-height:1.1}
-.card .tl em{font-style:normal;font-size:calc(var(--cw)*.4);letter-spacing:-.06em}
-.card .tl i{font-style:normal;font-size:calc(var(--cw)*.26)}
-.card .mid{position:absolute;left:0;right:0;bottom:7%;text-align:center;font-size:calc(var(--cw)*.7);line-height:1}
-.card .mid.face{font-family:var(--f-num);font-weight:900;font-size:calc(var(--cw)*.58);bottom:12%}
+.card .tl{position:absolute;left:5%;right:5%;top:1%;display:flex;justify-content:space-between;align-items:center;font-family:var(--f-num);font-weight:800;line-height:1.1}
+.card .tl em{font-style:normal;font-size:calc(var(--cw)*.47);letter-spacing:-.07em}
+.card .tl i{font-style:normal;font-size:calc(var(--cw)*.32)}
+.card .mid{position:absolute;left:0;right:0;bottom:6%;text-align:center;font-size:calc(var(--cw)*.78);line-height:1}
+.card .mid.face{font-family:var(--f-num);font-weight:900;font-size:calc(var(--cw)*.62);bottom:10%}
 .card .mid.face small{font-size:.55em;margin-left:1px}
 .card.sel{box-shadow:0 0 0 3px var(--gold),0 6px 14px rgba(20,40,80,.4)}
 .card.hint{animation:glow .9s ease-in-out 2}
@@ -325,9 +325,9 @@ cardEl.forEach(e=>board.appendChild(e));
 
 function layout(){
   const W=board.clientWidth, H=board.clientHeight; if(!W||!H) return;
-  const g0=Math.max(4,W*.011);
-  const cw=Math.min((W-7*g0)/8,100,(H*.2)/1.45);
-  const ch=cw*1.45;
+  const g0=Math.max(3,W*.008);
+  const cw=Math.min((W-7*g0)/8,124,(H*.21)/1.52);
+  const ch=cw*1.52;
   const g=Math.min((W-8*cw)/7,cw*.25);
   const x0=(W-(8*cw+7*g))/2;
   const top=ch+Math.max(12,ch*.18);
@@ -344,7 +344,7 @@ const colX=i=>L.x0+i*(L.cw+L.g);
 function colOffset(n){
   if(n<2) return 0;
   const avail=L.H-L.top-L.ch-4;
-  return Math.max(8,Math.min(L.ch*.34,avail/(n-1)));
+  return Math.max(8,Math.min(L.ch*.36,avail/(n-1)));
 }
 /* card motion: each card remembers where it sits; a change of place flies along an arc */
 const pos=new Array(52).fill(null);
@@ -673,8 +673,8 @@ function cardImage(c,w,h,dpr){
   if(g.roundRect)g.roundRect(.5,.5,w-1,h-1,r);else g.rect(.5,.5,w-1,h-1);g.fill();g.stroke();
   g.fillStyle=red(c)?'#e3264f':'#1f4b57';
   const R=RANK[rank(c)],U=SUIT[suit(c)],num='"Nunito","Arial Rounded MT Bold",sans-serif';
-  g.textBaseline='top';g.textAlign='left';g.font='800 '+(w*.4)+'px '+num;g.fillText(R,w*.06,h*.04);
-  g.textAlign='right';g.font=(w*.26)+'px sans-serif';g.fillText(U,w*.94,h*.06);
+  g.textBaseline='top';g.textAlign='left';g.font='800 '+(w*.47)+'px '+num;g.fillText(R,w*.05,h*.02);
+  g.textAlign='right';g.font=(w*.32)+'px sans-serif';g.fillText(U,w*.95,h*.04);
   g.textAlign='center';g.textBaseline='alphabetic';
   if(rank(c)>=10){g.font='900 '+(w*.58)+'px '+num;g.fillText(R+U,w/2,h*.86)}
   else{g.font=(w*.7)+'px sans-serif';g.fillText(U,w/2,h*.9)}
