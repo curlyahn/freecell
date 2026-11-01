@@ -365,6 +365,7 @@ function saveStats(st){try{localStorage.setItem('fc-stats',JSON.stringify(st))}c
 /* where the little face sits on each puffy suit shape (club, diamond, heart, spade) */
 const FACE_Y=[10.6,11.4,11.1,12.2];
 function kawaii(su){
+  return ''; /* faces removed: suits are drawn solid */
   const y=FACE_Y[su];
   return '<g class="kawaii"><circle cx="9.9" cy="'+y+'" r=".95"/><circle cx="14.1" cy="'+y+'" r=".95"/>'+
     '<path d="M11 '+(y+1.5)+'q1 .9 2 0"/></g>';
@@ -818,7 +819,7 @@ function cardImage(c,w,h,dpr){
     g.fillText(R,w/2,h-h*.07-w*.26);
     g.save();g.translate(w/2-w*.17,h-h*.07-w*.66);g.scale(w*.34/24,w*.24/22);g.fillStyle='#ffc93c';g.strokeStyle=ink;g.lineWidth=1.4;g.lineJoin='round';
     const ic=new Path2D(document.getElementById('ic-'+R).getAttribute('d'));g.fill(ic);g.stroke(ic);g.restore();
-  } else suitAt(w*.14,h-h*.07-w*.72,w*.72,true);
+  } else suitAt(w*.14,h-h*.07-w*.72,w*.72);
   return cv;
 }
 function cascade(done){
