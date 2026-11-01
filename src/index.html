@@ -251,7 +251,7 @@ const SUIT=['♣','♦','♥','♠'], RANK=['A','2','3','4','5','6','7','8','9',
 const rank=c=>c>>2, suit=c=>c&3, red=c=>{const s=c&3;return s===1||s===2};
 const q=id=>document.getElementById(id);
 const board=q('board');
-let over=false, S, hist=[], sel=null, L={}, timerId=null, startTs=0, elapsed=0, won=false, paused=false;
+let over=false, finishing=false, S, hist=[], sel=null, L={}, timerId=null, startTs=0, elapsed=0, won=false, paused=false;
 const cardEl=[];
 
 /* Sound effects, synthesized with Web Audio (no audio files):
@@ -525,8 +525,21 @@ function findAuto(force){
 }
 /* cards bound for the foundations fly one at a time */
 let autoToken=0;
+/* Will the cards fly home by themselves from here? Pure simulation of the auto-play chain. */
+function autoFinishes(force){
+  const cells=S.cells.slice(),cols=S.cols.map(c=>c.slice()),found=S.found.slice();
+  const ok=c=>{if(found[suit(c)]!==rank(c))return false;if(force)return true;const r=rank(c);if(r<=1)return true;const o=red(c)?[0,3]:[1,2];return found[o[0]]>=r&&found[o[1]]>=r};
+  let moved=true;
+  while(moved){moved=false;
+    for(let i=0;i<4;i++){const c=cells[i];if(c!=null&&ok(c)){found[suit(c)]++;cells[i]=null;moved=true}}
+    for(const col of cols){if(col.length&&ok(col[col.length-1])){found[suit(col.pop())]++;moved=true}}
+  }
+  return found.every(n=>n===13);
+}
 function runAuto(force,delay){
   const t=++autoToken; let n=0;
+  /* the game is won the moment the rest can finish on its own: stop the clock now, not after the animation */
+  if(!won&&!finishing&&S&&autoFinishes(force)){finishing=true;sel=null;stopTimer();}
   const step=()=>{
     if(t!==autoToken) return;
     const m=findAuto(force);
@@ -577,7 +590,7 @@ function findHint(){
   return null;
 }
 function showHint(){
-  if(won||paused) return;
+  if(won||paused||finishing) return;
   if(over){showOver();return}
   const h=findHint();
   if(!h){Sfx.play('bad');toast('더 이상 옮길 수 있는 카드가 없어요. 취소해 볼까요?');return}
@@ -593,7 +606,7 @@ function showHint(){
   setTimeout(()=>el.classList.remove('hint-dst'),1900);
 }
 function magic(){
-  if(won||paused) return;
+  if(won||paused||finishing) return;
   if(over){showOver();return}
   if(!findAuto(true)){Sfx.play('bad');toast('지금은 올릴 수 있는 카드가 없어요');return}
   Sfx.play('magic');
@@ -611,7 +624,7 @@ function targetAt(x,y){
 /* pointer: drag or tap */
 let ptr=null, lastTap={c:-1,t:0};
 board.addEventListener('pointerdown',e=>{
-  if(won||paused) return;
+  if(won||paused||finishing) return;
   if(over){showOver();return}
   const rect=board.getBoundingClientRect();
   const node=e.target.closest('.card'); const c=node?+node.dataset.c:null;
@@ -667,7 +680,7 @@ function tap(p){
 /* timer */
 function fmt(ms){const s=Math.floor(ms/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
 function startTimer(){
-  if(timerId||won||paused) return;
+  if(timerId||won||paused||finishing) return;
   startTs=performance.now()-elapsed;timerId=setInterval(tick,500);
   if(!S.counted){S.counted=true;const st=loadStats();st.played++;saveStats(st)}
 }
@@ -865,7 +878,7 @@ function confetti(){
 /* game flow */
 function abandon(){if(S&&S.counted&&!won){const st=loadStats();st.streak=0;saveStats(st)}}
 function start(n,state){
-  autoToken++;stopTimer();stopFx();elapsed=0;won=false;over=false;board.classList.remove('over');paused=false;sel=null;hist=[];pops=[];
+  autoToken++;stopTimer();stopFx();elapsed=0;won=false;over=false;finishing=false;board.classList.remove('over');paused=false;sel=null;hist=[];pops=[];
   cardEl.forEach(e=>{e.style.visibility='';e.classList.remove('pop','hint','shake')});
   S=state||fresh(n);
   q('time').textContent=fmt(0);
@@ -875,11 +888,11 @@ function start(n,state){
 function newGame(n){abandon();start(n||1+Math.floor(Math.random()*32000))}
 function persist(){try{localStorage.setItem('fc-game',JSON.stringify({S,hist:hist.slice(-60),elapsed,won}))}catch(e){}}
 
-q('undoBtn').onclick=()=>{if(!hist.length||won||paused)return;if(over){over=false;board.classList.remove('over')}autoToken++;Sfx.play('undo');S=hist.pop();sel=null;render();persist()};
+q('undoBtn').onclick=()=>{if(!hist.length||won||paused||finishing)return;if(over){over=false;board.classList.remove('over')}autoToken++;Sfx.play('undo');S=hist.pop();sel=null;render();persist()};
 q('hintBtn').onclick=showHint;
 q('magicBtn').onclick=magic;
 q('pauseBtn').onclick=()=>{
-  if(won) return;
+  if(won||finishing) return;
   const running=!!timerId; stopTimer(); paused=true; Sfx.play('click'); board.style.visibility='hidden';
   sheet('<h2>일시 정지</h2><p>게임 #'+S.deal+' · '+fmt(elapsed)+' · '+S.moves+'번 이동</p><div class="col"><button class="btn green" id="sGo">계속하기</button></div>',
     ()=>{q('sGo').onclick=closeSheet},
