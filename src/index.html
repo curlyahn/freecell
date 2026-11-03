@@ -687,6 +687,13 @@ function startTimer(){
 }
 function tick(){elapsed=performance.now()-startTs;q('time').textContent=fmt(elapsed)}
 function stopTimer(){if(timerId){tick();clearInterval(timerId);timerId=null}}
+/* count time only while the game is on screen: stop when the app goes to the background, resume when it returns */
+let runningWhenHidden=false;
+function onHidden(){if(timerId){runningWhenHidden=true;stopTimer()}persist()}
+function onShown(){if(runningWhenHidden&&!document.hidden){runningWhenHidden=false;if(!paused&&!won&&!over&&!finishing)startTimer()}}
+document.addEventListener('visibilitychange',()=>document.hidden?onHidden():onShown());
+addEventListener('pagehide',onHidden);
+addEventListener('pageshow',onShown);
 
 /* toast + sheets */
 let toastT;
